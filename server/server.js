@@ -809,16 +809,18 @@ console.log('Iniciando servidor...')
     });
 
 //ORDER - END
+const start = async () => {
+  try {
+    const address = await fastify.listen({ 
+        port: 3000, 
+        host: '0.0.0.0' 
+    });
+    console.log(`Servidor rodando REALMENTE em: ${address}`);
+    console.log('Pronto para receber requisições!');
+  } catch (err) {
+    fastify.log.error(err);
+    process.exit(1);
+  }
+};
 
-// const start = async() => {
-    // Substitua seu .listen atual por este:
-    fastify.listen({ port: 3000, host: '0.0.0.0' }, (err, address) => {
-    if (err) {
-        fastify.log.error(err)
-        process.exit(1)
-    }
-    console.log(`Servidor rodando REALMENTE em: ${address}`)
-    })
-// }
-
-// start()
+start();
