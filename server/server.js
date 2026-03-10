@@ -812,7 +812,7 @@ console.log('Iniciando servidor...')
 
 const start = async() => {
     try{
-        const port = 8080;
+        const port = 3000;
         await fastify.listen({
             port: port,
             host: '0.0.0.0'
