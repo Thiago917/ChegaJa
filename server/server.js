@@ -809,6 +809,8 @@ console.log('Iniciando servidor...')
     });
 
 //ORDER - END
+
+
 const start = async () => {
   try {
     const address = await fastify.listen({ 

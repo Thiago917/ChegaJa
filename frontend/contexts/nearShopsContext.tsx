@@ -33,7 +33,9 @@ export const NearShopsProvider = ({children} : {children: React.ReactNode}) => {
             return false;
         }
 
-        return (await Location.getCurrentPositionAsync()).coords;
+        return (await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Low,
+        })).coords;
     }
 
     const loadNearShop = async () => {

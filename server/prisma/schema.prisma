@@ -21,11 +21,30 @@ model User {
   password    String
   created_at  DateTime @default(now())
 
-  RefreshTokens RefreshToken[]
-  ResetPassword ResetPasswords[]
-  PasswordHistory PasswordHistory[]
-  Shop  Shop[]
-  Order Order[]
+  Addresses         Address[]
+  RefreshTokens     RefreshToken[]
+  ResetPassword     ResetPasswords[]
+  PasswordHistory   PasswordHistory[]
+  Shop              Shop[]
+  Order             Order[]
+}
+
+
+model Address {
+  id           Int      @id @default(autoincrement())
+  logradouro   String   // Rua, Av, etc.
+  numero       String
+  complemento  String?
+  bairro       String
+  cidade       String
+  estado       String
+  cep          String
+  apelido      String?  // Ex: "Casa", "Trabalho"
+  isDefault    Boolean  @default(false)
+  
+  // Relação com o User
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id])
 }
 
 model RefreshToken {
