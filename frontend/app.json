@@ -1,0 +1,65 @@
+{
+  "expo": {
+    "name": "chegaJa",
+    "slug": "chegaJa",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/chegaja.png",
+    "scheme": "chegaja",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./assets/images/chegaja-foreground.png",
+        "backgroundImage": "./assets/images/app-icon-background.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "resize",
+      "package": "com.thi4g0.chegaJa"
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/chegaja.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/chegaja.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4b381642-6d68-41bf-991f-278888597a2f"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/4b381642-6d68-41bf-991f-278888597a2f"
+    }
+  }
+}

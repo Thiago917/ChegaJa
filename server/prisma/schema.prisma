@@ -1,0 +1,110 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int     @id @default(autoincrement())
+  name        String
+  email       String  @unique
+  photo       String 
+  password    String
+  created_at  DateTime @default(now())
+
+  RefreshTokens RefreshToken[]
+  ResetPassword ResetPasswords[]
+  PasswordHistory PasswordHistory[]
+  Shop  Shop[]
+  Order Order[]
+}
+
+model RefreshToken {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  token      String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model ResetPasswords {
+  id          Int     @id @default(autoincrement())
+  userId      Int     @unique
+  code        String  @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PasswordHistory {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  password    String
+  createdAt   DateTime @default(now())
+
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Shop {
+  id          Int       @id @default(autoincrement())
+  ownerId     Int       @unique
+  name        String    @unique
+  status      Boolean   @default(false)
+  cnpj        String    @unique
+  photo       String?
+  branch      String    
+  cep         String    
+  latitude    Float
+  longitude   Float
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime? // O "?"
+
+  user    User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  Products Product[]
+  Order Order[]
+}
+
+model Product {
+  id          Int       @id @default(autoincrement())
+  shopId      Int
+  name        String    @unique
+  price       Float     
+  category    String
+  status      Boolean   @default(true)
+  photo       String
+  createdAt   DateTime  @default(now())
+  UpdatedAt   DateTime  @updatedAt
+
+  shop    Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  shopId      Int
+  items       String    // JSON string of items
+  total       Float
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now())
+
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shop    Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
