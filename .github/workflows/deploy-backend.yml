@@ -27,7 +27,7 @@ jobs:
           context: ./server
           push: true
           # Tente colocar seu usuário fixo aqui em minúsculo se o secret falhar
-          tags: thiago917/chegaja-server:latest
+          tags: thiagol1ma17/chegaja-server:latest
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
