@@ -811,20 +811,17 @@ console.log('Iniciando servidor...')
 //ORDER - END
 
 const start = async() => {
-    try{
-        const port = 3000;
-        await fastify.listen({
-            port: port,
-            host: '0.0.0.0'
-        });
-        console.log('Servidor rodando na porta ', port);
+// No seu server.js
+const port = process.env.PORT || 3000;
+const host = '0.0.0.0'; // Force a string aqui
 
-    }
-    catch(err){
-        fastify.log.error(err);
-        process.exit(1);
-
-    }
+fastify.listen({ port, host }, (err, address) => {
+  if (err) {
+    console.error(err);
+    process.exit(1);
+  }
+  console.log(`Servidor rodando em: ${address}`);
+});
 }
 
 start()
