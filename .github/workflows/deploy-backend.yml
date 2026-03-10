@@ -2,9 +2,9 @@ name: Build and Push Server Image
 
 on:
   push:
-    branches: [ "main" ] # Dispara sempre que houver push na main
+    branches: ['main']
     paths:
-      - 'server/**' # Só dispara se houver mudanças na pasta do servidor
+      - 'server/**'
 
 jobs:
   build:
@@ -20,10 +20,10 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Docker image
+      - name: Build and Push Docker Image
         uses: docker/build-push-action@v4
         with:
-          context: ./server # Indica que o Dockerfile está dentro de /server
+          context: ./server
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/chegaja-server:latest
 
