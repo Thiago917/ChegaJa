@@ -810,18 +810,15 @@ console.log('Iniciando servidor...')
 
 //ORDER - END
 
-const start = async() => {
-// No seu server.js
-const port = process.env.PORT || 3000;
-const host = '0.0.0.0'; // Force a string aqui
+// const start = async() => {
+    // Substitua seu .listen atual por este:
+    fastify.listen({ port: 3000, host: '0.0.0.0' }, (err, address) => {
+    if (err) {
+        fastify.log.error(err)
+        process.exit(1)
+    }
+    console.log(`Servidor rodando REALMENTE em: ${address}`)
+    })
+// }
 
-fastify.listen({ port, host }, (err, address) => {
-  if (err) {
-    console.error(err);
-    process.exit(1);
-  }
-  console.log(`Servidor rodando em: ${address}`);
-});
-}
-
-start()
+// start()
