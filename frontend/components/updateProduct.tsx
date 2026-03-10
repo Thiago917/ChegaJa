@@ -86,10 +86,11 @@ export default function UpdateProd({ product, visible, onClose }: Props) {
                 const uri = result.assets[0].uri;
                 const compressURI = await compressPhoto(uri);
                 // Aqui você usa o nome do produto atualizado
+                setLoading(true)
                 const imageUrl = await uploadImageAsync(compressURI, String(product.id), productName);
-                
-                if (imageUrl.error) return Alert.alert('Erro', imageUrl.description);
+                if (imageUrl.error) {setLoading(false); return Alert.alert('Erro', imageUrl.description)};
                 setProductPhoto(String(imageUrl.url));
+                setLoading(false)
             }
         } catch (err) {
             console.log('Erro ao abrir a galeria: ', err);
