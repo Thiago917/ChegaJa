@@ -122,6 +122,8 @@ const validaToken = async (token) => {
     }
 }
 
+console.log('Iniciando servidor...')
+
 //USER - START
 
     fastify.get('/me', {onRequest:[fastify.authenticate]}, async(req, res) => {
