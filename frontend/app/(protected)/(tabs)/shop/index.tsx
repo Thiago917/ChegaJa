@@ -13,7 +13,6 @@ export default function Shopping() {
   const [loading, setLoading] = useState<boolean>(false);
   const [modalVisible, setModalVisible] = useState<boolean>(false)
   const {shop, setShop} = useShop()
-  const {loadNearShop} = useNears() 
 
   const handleStatusChange = (status: boolean, id: string) => {
     if (status === shop?.status) return setModalVisible(false);
@@ -31,7 +30,7 @@ export default function Shopping() {
             text: 'SIM',
             onPress: async () => {
               try {
-                await setShop({ status: status });
+                await setShop(id, {status: status});
               } catch (err) {
                 console.log(err);
               } finally {
@@ -44,7 +43,7 @@ export default function Shopping() {
       return; 
     }
 
-    setShop({ status: status });
+    setShop(id, {status: status});
     setModalVisible(false);
   };
 

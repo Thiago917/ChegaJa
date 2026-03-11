@@ -586,9 +586,9 @@ console.log('Iniciando servidor...')
         return res.send(shopsWithDistance);
     })
 
-    fastify.patch('/update-shop', {onRequest:[fastify.authenticate]}, async (req, res) => {
+    fastify.patch('/update-shop/:id', {onRequest:[fastify.authenticate]}, async (req, res) => {
 
-        const shop_id = req.user.id
+        const shop_id = req.params.id
         const updates = req.body.updates
 
         if(!updates){

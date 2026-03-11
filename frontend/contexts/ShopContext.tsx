@@ -13,7 +13,7 @@ export type Shop={
 type ShopContextType = {
     shop: Shop | null
     loadShopData: () => Promise<void>
-    setShop: (updates: Partial<Shop>) => void;
+    setShop: (id: string, updates: Partial<Shop>) => void;
 }
 
 const ShopContext = createContext<ShopContextType>({} as ShopContextType);
@@ -41,14 +41,14 @@ export const ShopProvider = ({children} : {children: React.ReactNode}) => {
         }
     }
 
-    const setShop = async (updates: Partial<Shop>) => {
+    const setShop = async (id: string, updates: Partial<Shop>) => {
 
         if(!shop) return;
         const prev = shop;
 
         try{
 
-            const response = await api.patch('/update-shop', {updates})
+            const response = await api.patch(`/update-shop/${id}`, {updates})
             const res = response.data
             
             if(res.error){
