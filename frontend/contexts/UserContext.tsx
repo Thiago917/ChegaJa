@@ -58,7 +58,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const prev = user;
 
         try{
-            const response = await api.patch(`/update-me/${id}`, updates)
+            const response = await api.patch(`/update-me/${id}`, {updates})
             const res = response.data
 
             if(res.error){
