@@ -45,10 +45,10 @@ export const ShopProvider = ({children} : {children: React.ReactNode}) => {
 
         if(!shop) return;
         const prev = shop;
-
+        console.log('Atualizando dados da loja | ', updates)
         try{
 
-            const response = await api.patch(`/update-shop/${id}`, {updates})
+            const response = await api.patch(`/update-shop/${Number(id)}`, {updates})
             const res = response.data
             
             if(res.error){

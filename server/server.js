@@ -588,7 +588,7 @@ console.log('Iniciando servidor...')
 
     fastify.patch('/update-shop/:id', {onRequest:[fastify.authenticate]}, async (req, res) => {
 
-        const shop_id = req.params.id
+        const shop_id = Number(req.params.id)
         const updates = req.body.updates
 
         if(!updates){
