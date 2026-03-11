@@ -122,7 +122,6 @@ const validaToken = async (token) => {
     }
 }
 
-console.log('Iniciando servidor...')
 
 //USER - START
 
