@@ -6,6 +6,8 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Alert, FlatList, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useNears } from "@/contexts/nearShopsContext";
+import { useCart } from "@/contexts/CartContext";
+import { CartItems } from "@/components/cartItems";
 
 export default function Home() {
 
@@ -16,6 +18,8 @@ export default function Home() {
     const [refreshing, setRefreshing] = useState<boolean>(false)
     const { photo } = usePhoto();
     const { stores, loadNearShop} = useNears()
+    const [visible, setVisible] = useState<boolean>(false)
+    const { cart, getCartItemsCount, updateQuantity } = useCart();
     
     useFocusEffect(
         useCallback(() => {
@@ -56,13 +60,23 @@ export default function Home() {
                         <Ionicons name="chevron-down" size={14} color={MAIN_COLOR} style={{ marginLeft: 4 }} />
                     </View>
                 </View>
-                <TouchableOpacity onPress={() => router.push('/profile')}>
-                    <Image 
-                        style={styles.userAvatar} 
-                        source={photo ? { uri: photo } : { uri: 'https://via.placeholder.com/150' }} 
-                        contentFit="cover"
-                    />
-                </TouchableOpacity>
+                <View style={styles.headerIcons}>
+                    <TouchableOpacity style={styles.cartIconContainer} onPress={() => setVisible(true)}>
+                        <Ionicons name="cart" size={24} color={MAIN_COLOR} />
+                        {getCartItemsCount() > 0 && (
+                            <View style={[styles.badge, { backgroundColor: MAIN_COLOR }]}>
+                                <Text style={styles.badgeText}>{getCartItemsCount()}</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => router.push('/profile')}>
+                        <Image 
+                            style={styles.userAvatar} 
+                            source={photo ? { uri: photo } : { uri: 'https://via.placeholder.com/150' }} 
+                            contentFit="cover"
+                        />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {/* 2. Barra de Busca */}
@@ -125,6 +139,7 @@ export default function Home() {
                     </TouchableOpacity>
                 )}
             />
+            <CartItems cart={cart} updateQuantity={updateQuantity} visible={visible} onClose={() => setVisible(false)} />
         </View>
     );
 }
@@ -251,5 +266,30 @@ const styles = StyleSheet.create({
     deliveryPrice: {
         fontSize: 13,
         color: '#444',
+    },
+    headerIcons: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    cartIconContainer: {
+        position: 'relative',
+    },
+    badge: {
+        position: 'absolute',
+        top: -5,
+        right: -5,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#FFF',
+    },
+    badgeText: {
+        color: '#FFF',
+        fontSize: 11,
+        fontWeight: 'bold',
     }
 });

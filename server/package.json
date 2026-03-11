@@ -5,11 +5,11 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "dev": "nodemon server.js",
-    "start": "node server.js",
-    "prisma:migrate": "npx prisma migrate dev",
-    "prisma:studio": "npx prisma studio"
-  },
+      "dev": "nodemon server.js",
+      "start": "npx prisma migrate deploy && node server.js",
+      "build": "prisma generate", 
+      "postinstall": "prisma generate"
+    },
   "dependencies": {
     "@fastify/cors": "^11.2.0",
     "@fastify/helmet": "^13.0.2",

@@ -814,7 +814,7 @@ console.log('Iniciando servidor...')
 const start = async () => {
   try {
     const address = await fastify.listen({ 
-        port: 3000, 
+        port: process.env.PORT || 3000, 
         host: '0.0.0.0' 
     });
     console.log(`Servidor rodando REALMENTE em: ${address}`);

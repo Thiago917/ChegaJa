@@ -3,13 +3,17 @@ import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import api from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
+import { Products } from '@/contexts/MenuContext';
+import { CartItems } from '@/components/cartItems';
+import { useCart } from '@/contexts/CartContext';
 
 export default function MenuScreen() {
   const { shopId, distance } = useLocalSearchParams();
   const [menu, setMenu] = useState<any[]>([]);
   const [shop, setShop] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [cart, setCart] = useState<{ [key: number]: number }>({});
+  const [cartModalVisible, setCartModalVisible] = useState(false);
+  const { cart, updateQuantity, getCartItemsCount } = useCart();
   const distanceFormatted = distance ? `${parseFloat(distance as string).toFixed(1)} km` : '-- km';
   
   const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c';
@@ -33,14 +37,6 @@ export default function MenuScreen() {
         }, 500)
     }
   };
-  
-  const updateQuantity = (productId: number, delta: number) => {
-    setCart(prev => {
-      const current = prev[productId] || 0;
-      const next = Math.max(0, current + delta);
-      return { ...prev, [productId]: next };
-    });
-  };
 
   if (loading) return <ActivityIndicator style={{ flex: 1 }} color={MAIN_COLOR} />;
 
@@ -58,6 +54,14 @@ export default function MenuScreen() {
             <View style={{ flexDirection: 'row' }}>
               <TouchableOpacity style={styles.iconCircle}><Ionicons name="heart-outline" size={22} color="#FFF" /></TouchableOpacity>
               <TouchableOpacity style={[styles.iconCircle, { marginLeft: 10 }]}><Ionicons name="search" size={22} color="#FFF" /></TouchableOpacity>
+              <TouchableOpacity style={[styles.iconCircle, { marginLeft: 10, position: 'relative' }]} onPress={() => setCartModalVisible(true)}>
+                <Ionicons name="cart" size={22} color="#FFF" />
+                {cart.length > 0 && (
+                  <View style={styles.cartBadge}>
+                    <Text style={styles.cartBadgeText}>{cart.length}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -94,12 +98,14 @@ export default function MenuScreen() {
             <Text style={styles.sectionTitle}>{category.category}</Text>
             
             <View style={styles.grid}>
-              {category.products.map((product: any) => (
+              {category.products.map((product: any) => {
+                const cartItem = cart.find(item => item.item.id === product.id);
+                return (
                 <View key={product.id} style={[styles.productItem, !product.status && styles.disabledProduct]}>
                     <Image source={{ uri: product.photo }} style={[styles.productImage, !product.status && styles.disabledImage]} />
-                    {cart[product.id] > 0 && (
+                    {cartItem && cartItem.quantity > 0 && (
                       <View style={[styles.badge, { backgroundColor: MAIN_COLOR }]}>
-                        <Text style={styles.badgeText}>{cart[product.id]}</Text>
+                        <Text style={styles.badgeText}>{cartItem.quantity}</Text>
                       </View>
                     )}
                   <View style={{ justifyContent: 'center', marginTop: 8, height: 50 }}>
@@ -108,19 +114,24 @@ export default function MenuScreen() {
                   </View>
                   
                   <View style={styles.quantityContainer}>
-                    <TouchableOpacity disabled={!product.status} style={[styles.quantityButton, !product.status && styles.disabledButton]} activeOpacity={0.8} onPress={() => updateQuantity(product.id, -1)}>
+                    <TouchableOpacity disabled={!product.status} style={[styles.quantityButton, !product.status && styles.disabledButton]} activeOpacity={0.8} onPress={() => updateQuantity(product, -1)}>
                       <Ionicons name="remove" size={20} color={!product.status ? '#CCC' : MAIN_COLOR} />
                     </TouchableOpacity>
-                    <TouchableOpacity disabled={!product.status} style={[styles.quantityButton, !product.status && styles.disabledButton]} activeOpacity={0.8} onPress={() => updateQuantity(product.id, 1)}>
+                    <TouchableOpacity disabled={!product.status} style={[styles.quantityButton, !product.status && styles.disabledButton]} activeOpacity={0.8} onPress={() => updateQuantity(product, 1)}>
                       <Ionicons name="add" size={20} color={!product.status ? '#CCC' : MAIN_COLOR} />
                     </TouchableOpacity>
                   </View>
                 </View>
-              ))}
+                );
+              })}
             </View>
           </View>
         ))}
+
+        <CartItems cart={cart} updateQuantity={updateQuantity} visible={cartModalVisible} onClose={() => setCartModalVisible(false)} />
       </ScrollView>
+
+
     </View>
   );
 }
@@ -231,5 +242,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
+  // Cart Badge
+  cartBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#e74c3c',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+  cartBadgeText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: 'bold',
+  }
 });
