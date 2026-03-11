@@ -1,4 +1,3 @@
-import { usePhoto } from "@/contexts/PhotoContext";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
@@ -18,13 +17,16 @@ export default function Home() {
 
     const [search, setSearch] = useState<string>('');
     const [refreshing, setRefreshing] = useState<boolean>(false)
-    // const { photo } = usePhoto();
     const {user} = useUser();
     const { stores, loadNearShop} = useNears()
     const [visible, setVisible] = useState<boolean>(false)
-    const [address, setAddress] = useState<boolean>(false)
+    const [addressModal, setAddressModal] = useState<boolean>(false)
     const { cart, getCartItemsCount, updateQuantity } = useCart();
     
+    const currentAddress = user?.address || null;
+
+    console.log('Endereço atual do usuário:', user?.address);
+
     useFocusEffect(
         useCallback(() => {
             loadNearShop()
@@ -60,8 +62,11 @@ export default function Home() {
                     <Text style={styles.locationLabel}>Entregar em</Text>
                     <View style={styles.locationRow}>
                         <Ionicons name="location" size={16} color={MAIN_COLOR} />
-                            <Text style={styles.locationText} numberOfLines={1}>Rua das marmitas, 123</Text>
-                        <Ionicons name="chevron-down" size={14} color={MAIN_COLOR} style={{ marginLeft: 4 }} onPress={() => setAddress(true)}/>
+                            <Text style={styles.locationText} numberOfLines={1}>{currentAddress?.logradouro} - {currentAddress?.numero}</Text>
+
+                            {/* <TouchableOpacity onPress={() => setAddressModal}> */}
+                                <Ionicons name="chevron-down" size={14} color={MAIN_COLOR} style={{ marginLeft: 4 }} onPress={() => setAddressModal(true)} />
+                            {/* </TouchableOpacity> */}
                     </View>
                 </View>
                 <View style={styles.headerIcons}>
@@ -144,7 +149,7 @@ export default function Home() {
                 )}
             />
             <CartItems cart={cart} updateQuantity={updateQuantity} visible={visible} onClose={() => setVisible(false)} />
-            <AddressLocation visible={address} onClose={() => setAddress(false)} />
+            <AddressLocation visible={addressModal} onClose={() => setAddressModal(false)} address={currentAddress} />
         </View>
     );
 }

@@ -134,8 +134,8 @@ console.log('Iniciando servidor...')
             where: {id: userId},
         });
 
-        const address = await prisma.Address.findMany({
-            where: {userId}
+        const address = await prisma.Address.findFirst({
+            where: {userId, isDefault: true}
         })
 
         if(!user) return res.status(404).send({message: 'Usuário não encontrado!'});
@@ -535,7 +535,9 @@ console.log('Iniciando servidor...')
     fastify.post('/register-address', {onRequest:[fastify.authenticate]}, async (req, res) => {
 
         const user_id = req.user.id
-        const data = req.body
+        const data = req.body.data
+
+        console.log(data)
 
         if(!user_id || !data) return res.send({message: 'Dados não enviados para o backend', error: true})
 

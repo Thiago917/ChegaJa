@@ -2,13 +2,16 @@ import api from "@/services/api";
 import socket from "@/services/socket";
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
-type Address = {
-    street: string;
-    number: string;
-    neighborhood: string;
-    complement: string;
-    city: string;
+export type Address = {
+    logradouro: string;
+    numero: string;
+    bairro: string;
+    complemento: string;
+    cidade: string;
     cep: string;
+    uf: string;
+    label: string;
+    isDefault: boolean;
 }
 
 type User = {

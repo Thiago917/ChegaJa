@@ -11,25 +11,11 @@ export default function Order(){
     const router = useRouter();
     const [paymentMethod, setPaymentMethod] = useState<'credit' | 'debit' | 'pix' | null>(null);
     const [visible, setVisible] = useState<boolean>(false);
-    const [deliveryAddress, setDeliveryAddress] = useState({
-        street: 'Rua das Marmitas',
-        number: '123',
-        complement: 'Apartamento 42',
-        neighborhood: 'Bairro Central',
-        city: 'São Paulo',
-        cep: '01234-567',
-        label: 'Residência'
-    });
     const { user } = useUser();
     const { cart, getCartSubtotal, getCartTotal } = useCart();
     
-    // const handleAddressSave = (newAddress: any) => {
-        //     setDeliveryAddress(newAddress);
-        // };
-        
-        // Dados do carrinho via Context
     const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c';
-    const address = user?.address || {street: 'Rua das Marmitas',number: '123', complement: 'Na encruzilhada', neighborhood: 'Bairro Central'}
+    const address = user?.address || null
     const subtotal = getCartSubtotal();
     const deliveryFee = 8.99;
     const total = getCartTotal();
@@ -54,15 +40,15 @@ export default function Order(){
                         <Text style={styles.sectionTitle}>Entrega em</Text>
                     </View>
                     <View style={styles.deliveryBox}>
-                        <Text style={styles.deliveryAddress}>{address.street}, {address.number}</Text>
-                        <Text style={styles.deliveryDetails}>{address.complement} - {address.neighborhood}</Text>
+                        <Text style={styles.deliveryAddress}>{address?.logradouro}, {address?.numero}</Text>
+                        <Text style={styles.deliveryDetails}>{address?.complemento} - {address?.bairro}</Text>
                         <TouchableOpacity style={styles.editButton} onPress={() => {setVisible(true)}}>
                             <Text style={[styles.editButtonText, { color: MAIN_COLOR }]}>Alterar endereço</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
 
-                <AddressLocation visible={visible} onClose={() => setVisible(false)}/>
+                <AddressLocation visible={visible} onClose={() => setVisible(false)} address={address}/>
 
                 {/* Seção de Itens */}
                 <View style={styles.section}>

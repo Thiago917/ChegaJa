@@ -2,22 +2,26 @@ import { Modal, Text, View, StyleSheet, TextInput, TouchableOpacity, ScrollView,
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
-import { useUser } from "@/contexts/UserContext";
+import { Address, useUser } from "@/contexts/UserContext";
 import api from "@/services/api";
+import MaskInput from 'react-native-mask-input'
+import Checkbox from "expo-checkbox";
 
-export default function AddressLocation({ visible, onClose}: { visible: boolean; onClose: () => void; onSave?: (address: any) => void }) {
-    const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c';
+export default function AddressLocation({ visible, onClose, address }: { visible: boolean; onClose: () => void; address: Address | null }) {
     
-    const [street, setStreet] = useState('');
-    const [number, setNumber] = useState('');
-    const [complement, setComplement] = useState('');
-    const [neighborhood, setNeighborhood] = useState('');
-    const [city, setCity] = useState('');
-    const [uf, setUf] = useState<string>('');
-    const [cep, setCep] = useState('');
-    const [addressLabel, setAddressLabel] = useState('Residência');
-    const [loading, setLoading] = useState<boolean>(false)
-    const {user, setUser} = useUser()
+    const [street, setStreet] = useState(address?.logradouro || '');
+    const [number, setNumber] = useState(address?.numero || '');
+    const [complement, setComplement] = useState(address?.complemento || '');
+    const [neighborhood, setNeighborhood] = useState(address?.bairro || '');
+    const [city, setCity] = useState(address?.cidade || '');
+    const [uf, setUf] = useState<string>(address?.uf || '');
+    const [cep, setCep] = useState(address?.cep || '');
+    const [isChecked, setIsChecked] = useState<boolean>(address?.isDefault || false);
+    const [addressLabel, setAddressLabel] = useState(address?.label || 'Residência');
+    const [loading, setLoading] = useState<boolean>(false);
+    
+    console.log(address)
+    const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c';
 
     const handleSave = async () => {
         if (!street || !number || !neighborhood || !city || !cep) {
@@ -26,19 +30,20 @@ export default function AddressLocation({ visible, onClose}: { visible: boolean;
         }
 
         setLoading(true)
-        const newAddress = {
-            street,
-            number,
-            complement,
-            neighborhood,
-            city,
-            cep,
-            uf,
+        const data = {
+            street: street,
+            number: number,
+            complement: complement,
+            neighborhood: neighborhood,
+            city: city,
+            cep: cep,
+            uf: uf,
             label: addressLabel,
+            isDefault: isChecked
         };
 
         try{
-            const response = await api.post('/register-address', {address: newAddress})
+            const response = await api.post('/register-address', {data})
             const res = response.data
 
             if(res.error){
@@ -121,14 +126,13 @@ export default function AddressLocation({ visible, onClose}: { visible: boolean;
                         {/* CEP */}
                         <View style={styles.section}>
                             <Text style={styles.label}>CEP *</Text>
-                            <TextInput
+                            <MaskInput
                                 style={styles.input}
                                 placeholder="00000-000"
                                 placeholderTextColor="#CCC"
-                                keyboardType="numeric"
                                 value={cep}
                                 onChangeText={setCep}
-                                maxLength={9}
+                                mask={[/\d/, /\d/, /\d/, /\d/, /\d/, '-', /\d/, /\d/, /\d/]}
                                 onBlur={() => viacep(cep)}
                             />
                         </View>
@@ -194,6 +198,11 @@ export default function AddressLocation({ visible, onClose}: { visible: boolean;
                                     onChangeText={setCity}
                                 />
                             </View>
+                        </View>
+
+                        <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
+                            <Checkbox value={isChecked} onValueChange={() => setIsChecked(!isChecked)}/>
+                            <Text>Endereço padrão</Text>
                         </View>
 
                         {/* Observação */}
