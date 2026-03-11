@@ -8,6 +8,8 @@ import { Alert, FlatList, RefreshControl, StyleSheet, Text, TextInput, Touchable
 import { useNears } from "@/contexts/nearShopsContext";
 import { useCart } from "@/contexts/CartContext";
 import { CartItems } from "@/components/cartItems";
+import AddressLocation from "@/components/addressLocation";
+import { useUser } from "@/contexts/UserContext";
 
 export default function Home() {
 
@@ -16,9 +18,11 @@ export default function Home() {
 
     const [search, setSearch] = useState<string>('');
     const [refreshing, setRefreshing] = useState<boolean>(false)
-    const { photo } = usePhoto();
+    // const { photo } = usePhoto();
+    const {user} = useUser();
     const { stores, loadNearShop} = useNears()
     const [visible, setVisible] = useState<boolean>(false)
+    const [address, setAddress] = useState<boolean>(false)
     const { cart, getCartItemsCount, updateQuantity } = useCart();
     
     useFocusEffect(
@@ -57,7 +61,7 @@ export default function Home() {
                     <View style={styles.locationRow}>
                         <Ionicons name="location" size={16} color={MAIN_COLOR} />
                             <Text style={styles.locationText} numberOfLines={1}>Rua das marmitas, 123</Text>
-                        <Ionicons name="chevron-down" size={14} color={MAIN_COLOR} style={{ marginLeft: 4 }} />
+                        <Ionicons name="chevron-down" size={14} color={MAIN_COLOR} style={{ marginLeft: 4 }} onPress={() => setAddress(true)}/>
                     </View>
                 </View>
                 <View style={styles.headerIcons}>
@@ -72,7 +76,7 @@ export default function Home() {
                     <TouchableOpacity onPress={() => router.push('/profile')}>
                         <Image 
                             style={styles.userAvatar} 
-                            source={photo ? { uri: photo } : { uri: 'https://via.placeholder.com/150' }} 
+                            source={user?.photo ? { uri: user?.photo } : { uri: 'https://via.placeholder.com/150' }} 
                             contentFit="cover"
                         />
                     </TouchableOpacity>
@@ -140,6 +144,7 @@ export default function Home() {
                 )}
             />
             <CartItems cart={cart} updateQuantity={updateQuantity} visible={visible} onClose={() => setVisible(false)} />
+            <AddressLocation visible={address} onClose={() => setAddress(false)} />
         </View>
     );
 }

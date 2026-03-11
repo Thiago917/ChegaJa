@@ -2,7 +2,6 @@ import { usePhoto } from "@/contexts/PhotoContext";
 import { useUser } from "@/contexts/UserContext";
 import ResetPasswordModal from "@/components/resetPasswordModal";
 import * as ImagePicker from 'expo-image-picker';
-import api from "@/services/api";
 import { uploadImageAsync } from "@/services/uploadImages";
 import { Ionicons } from "@expo/vector-icons";
 import { Link } from "expo-router";
@@ -10,28 +9,23 @@ import { Image } from 'expo-image';
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import * as ImageManipulator from 'expo-image-manipulator'
+import api from "@/services/api";
 
 export default function editProfile(){
 
 
-    const [userId, setUserId] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [modal, setModal] = useState<boolean>(false);
     const [txtLoading, setTxtLoading] = useState<boolean>(false);
     const [btnLoading, setBtnLoading] = useState<boolean>(false);
     const {setUserPhoto,} = usePhoto();
-    const {photo, loadPhoto} = usePhoto();
-    const {user, setUser} = useUser();    
+    const {user, loadUser, setUser} = useUser();    
 
     useEffect(() => {
-        fetchPhoto();
-    }, [loadPhoto]);
+        loadUser();
+    }, [user]);
 
-    const fetchPhoto = async () => {
-        await loadPhoto();
-        setLoading(false);
-    };
 
     const saveProfile = async () => {
         try{
@@ -41,18 +35,10 @@ export default function editProfile(){
                 return;
             }
 
-            const response = await api.post('/update-user', {name: user?.name, mail: user?.mail})
-            const res = response.data
-
-            if(res.error){
-                setLoading(false)
-                Alert.alert('Erro', res.message)
-                return;
-            }
-
+            await setUser(String(user?.id), {name: user?.name, mail: user?.mail})
             setLoading(false)
             setIsEditing(false)
-            Alert.alert('Sucesso', res.message)
+            Alert.alert('Sucesso', 'Perfil atualizado com sucesso!')
         }
         catch(err){
             Alert.alert('Erro', `${err}`)
@@ -84,7 +70,7 @@ export default function editProfile(){
                 const uri = result.assets[0].uri
 
                 const compressURI = await compressPhoto(uri);
-                const imageUrl = await uploadImageAsync(compressURI, String(user?.id))
+                const imageUrl = await uploadImageAsync(compressURI, String(user?.id), 'profile_photos')
                 if(imageUrl.error){
                     setLoading(false)
                     return Alert.alert('Erro', imageUrl.description)
@@ -124,7 +110,7 @@ export default function editProfile(){
                 <View style={styles.container}>
                     
                     <View style={styles.photoBox}>
-                        <Image source={photo ? {uri: `${photo}?${new Date().getTime()}`} : {}} style={styles.profilePhoto} cachePolicy='disk' />
+                        <Image source={user?.photo ? {uri: `${user?.photo}?${new Date().getTime()}`} : {}} style={styles.profilePhoto} cachePolicy='disk' />
 
                         <View style={styles.optionsBox}>
                         {!isEditing ? (
@@ -173,7 +159,7 @@ export default function editProfile(){
                         <View style={styles.inputBox}>
                             <Text style={styles.inputSpan}>Nome completo</Text>
                             <View style={styles.inputGroup}>
-                                <TextInput style={[styles.input, !isEditing && styles.inputDisabled]} value={user?.name || ''} editable={isEditing} onChangeText={(text) => setUser({name: text})}></TextInput>
+                                <TextInput style={[styles.input, !isEditing && styles.inputDisabled]} value={user?.name || ''} editable={isEditing} onChangeText={(text) => setUser(String(user?.id), {name: text})}></TextInput>
                                 <Ionicons name={isEditing ? 'create-outline' : 'lock-closed'} size={20} style={{right: '9%'}}/>
                             </View>
                         </View>
@@ -181,7 +167,7 @@ export default function editProfile(){
                         <View style={styles.inputBox}>
                             <Text style={styles.inputSpan}>Email</Text>
                             <View style={styles.inputGroup}>
-                                <TextInput style={[styles.input, !isEditing && styles.inputDisabled]} value={user?.mail || ''} editable={isEditing} onChangeText={(text) => setUser({mail: text})}></TextInput>
+                                <TextInput style={[styles.input, !isEditing && styles.inputDisabled]} value={user?.mail || ''} editable={isEditing} onChangeText={(text) => setUser(String(user?.id), {mail: text})}></TextInput>
                                 <Ionicons name={isEditing ? 'create-outline' : 'lock-closed'} size={20} style={{right: '9%'}}/>
                             </View>
                         </View>

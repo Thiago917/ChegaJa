@@ -1,11 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { router } from "expo-router";
 import { useState } from "react";
-import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export function CartItems({ cart, updateQuantity, visible, onClose }: { cart: { id: string; item: any; quantity: number }[]; updateQuantity: (item: any, delta: number) => void; visible: boolean; onClose: () => void }) {
 
     const MAIN_COLOR  = process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c';
+    const [loading, setLoading] = useState<boolean>(false);
 
     return(
         <Modal
@@ -74,8 +76,19 @@ export function CartItems({ cart, updateQuantity, visible, onClose }: { cart: { 
                     </View>
                     </View>
 
-                    <TouchableOpacity style={[styles.checkoutBtn, { backgroundColor: MAIN_COLOR }]}>
-                    <Text style={styles.checkoutBtnText}>Fazer Pedido</Text>
+                    <TouchableOpacity style={[styles.checkoutBtn, { backgroundColor: MAIN_COLOR }]} onPress={() => {
+                        setLoading(true);
+                        setTimeout(() => {
+                            setLoading(false);
+                            onClose();  
+                            router.push('/menu/order');
+                        }, 700);
+                    }}>
+                        {loading ? (
+                            <ActivityIndicator size="small" color="#FFF" />
+                        ) : (
+                            <Text style={styles.checkoutBtnText}>Fazer Pedido</Text>
+                        ) }
                     </TouchableOpacity>
                 </>
                 ) : (

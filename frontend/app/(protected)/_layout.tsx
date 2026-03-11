@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { CartProvider } from "@/contexts/CartContext";
+import { UserProvider } from "@/contexts/UserContext";
 
 
 export default function ProtectedLayout(){
@@ -33,10 +34,10 @@ export default function ProtectedLayout(){
 
     return(
         <CartProvider>
-            <>
+            <UserProvider>
                 <StatusBar style="dark" />
                 <Stack screenOptions={{headerShown: false}}/>
-            </>
+            </UserProvider>
         </CartProvider>
     )
 }

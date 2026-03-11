@@ -134,13 +134,18 @@ console.log('Iniciando servidor...')
             where: {id: userId},
         });
 
+        const address = await prisma.Address.findMany({
+            where: {userId}
+        })
+
         if(!user) return res.status(404).send({message: 'Usuário não encontrado!'});
 
         return {
             name: user.name,
             email: user.email,
             id: user.id,
-            photo: user.photo
+            photo: user.photo,
+            address: address
         };
     })
 
@@ -346,7 +351,7 @@ console.log('Iniciando servidor...')
         return res.send({message: 'Validação de token feita com sucesso, tokens novos gerados', accessToken: newAccessTk, refreshToken: newRefreshTk, error: false, name: getUser.name})
     })
 
-    fastify.post('/update-user', {onRequest:[fastify.authenticate]}, async (req, res) => {
+    fastify.patch('/update-me/:id', {onRequest:[fastify.authenticate]}, async (req, res) => {
 
         const {name} = req.body
         const {mail} = req.body
@@ -525,6 +530,53 @@ console.log('Iniciando servidor...')
         if(!saveData) return res.send({message: 'Erro ao redefinir sua senha', error: true})
             
         return res.send({message: 'Redefinição de senha concluída com sucesso!', error: false})
+    })
+
+    fastify.post('/register-address', {onRequest:[fastify.authenticate]}, async (req, res) => {
+
+        const user_id = req.user.id
+        const data = req.body
+
+        if(!user_id || !data) return res.send({message: 'Dados não enviados para o backend', error: true})
+
+        const exists = await prisma.Address.findFirst({
+            where: {userId: user_id, cep: data.cep}
+        })
+
+        if(exists) return res.send({message: 'Endereço já está cadastrado', error: true})
+        
+        const save = await prisma.Address.create({
+            data:{
+                userId: user_id,
+                logradouro: data.street,
+                numero: data.number,
+                complemento: data.complement,
+                bairro: data.neighborhood,
+                cidade: data.city,
+                estado: data.uf,
+                cep: data.cep,
+                apelido: data.label,
+                isDefault: data.isDefault || true
+            }
+        })
+
+        if(!save) return res.send({message: 'Erro ao cadastrar endereço', error: true})
+
+        io.emit('new-address', {
+            userId: user_id,
+            logradouro: data.street,
+            numero: data.number,
+            complemento: data.complement,
+            bairro: data.neighborhood,
+            cidade: data.city,
+            estado: data.uf,
+            cep: data.cep,
+            apelido: data.label,
+            isDefault: data.isDefault || true
+        })
+
+        return res.send({message: 'Endereço cadastrado com sucesso!', error: false})
+
     })
 
 //USER - END

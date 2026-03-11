@@ -116,7 +116,7 @@ export default function Profile(){
                 <View style={styles.photoContainer}>
                     <Image 
                         style={styles.photoBox} 
-                        source={photo ? {uri: photo} : {uri: 'https://via.placeholder.com/150'}} 
+                        source={user?.photo ? {uri: user.photo} : {uri: 'https://via.placeholder.com/150'}} 
                         resizeMode="cover"
                     />
                     {/* Um pequeno botão de 'editar' sobre a foto dá um ar profissional */}
