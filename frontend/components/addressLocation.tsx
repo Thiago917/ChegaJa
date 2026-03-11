@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { useUser } from "@/contexts/UserContext";
+import api from "@/services/api";
 
 export default function AddressLocation({ visible, onClose}: { visible: boolean; onClose: () => void; onSave?: (address: any) => void }) {
     const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c';
@@ -18,7 +19,7 @@ export default function AddressLocation({ visible, onClose}: { visible: boolean;
     const [loading, setLoading] = useState<boolean>(false)
     const {user, setUser} = useUser()
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!street || !number || !neighborhood || !city || !cep) {
             alert('Por favor, preencha todos os campos obrigatórios');
             return;
@@ -37,11 +38,21 @@ export default function AddressLocation({ visible, onClose}: { visible: boolean;
         };
 
         try{
-            setUser(String(user?.id), {address: newAddress})
+            const response = await api.post('/register-address', {address: newAddress})
+            const res = response.data
+
+            if(res.error){
+                Alert.alert('Erro', `${res.message}`)
+            }
+
+            Alert.alert('Erro', `${res.message}`)
+            onClose()
         }
         catch(err){
-            setLoading(false)
             console.log('Erro ao salvar endereço: ', err);
+        }
+        finally {
+            setLoading(false)
         }
     };
 

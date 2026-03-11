@@ -122,6 +122,7 @@ const validaToken = async (token) => {
     }
 }
 
+console.log('Iniciando servidor...')
 
 //USER - START
 
@@ -350,7 +351,7 @@ const validaToken = async (token) => {
         return res.send({message: 'Validação de token feita com sucesso, tokens novos gerados', accessToken: newAccessTk, refreshToken: newRefreshTk, error: false, name: getUser.name})
     })
 
-    fastify.patch('/update-me/:id', {onRequest:[fastify.authenticate]}, async (req, res) => {
+    fastify.post('/update-user', {onRequest:[fastify.authenticate]}, async (req, res) => {
 
         const {name} = req.body
         const {mail} = req.body
@@ -555,7 +556,7 @@ const validaToken = async (token) => {
                 estado: data.uf,
                 cep: data.cep,
                 apelido: data.label,
-                isDefault: data.isDefault || true
+                isDefault: data.isDefault 
             }
         })
 

@@ -58,7 +58,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const prev = user;
 
         try{
-            const response = await api.patch(`/update-me/${id}`, {updates})
+            // Mapear os campos para o que o server espera
+            const body: any = {};
+            if(updates.name) body.name = updates.name;
+            if(updates.mail) body.mail = updates.mail;
+            if(updates.address) body.address = updates.address;
+            
+            const response = await api.patch(`/update-me/${id}`, body)
             const res = response.data
 
             if(res.error){
