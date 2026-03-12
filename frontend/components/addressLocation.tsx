@@ -1,49 +1,71 @@
 import { Modal, Text, View, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from "react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
-import { Address, useUser } from "@/contexts/UserContext";
 import api from "@/services/api";
 import MaskInput from 'react-native-mask-input'
 import Checkbox from "expo-checkbox";
+import { useUser } from "@/contexts/UserContext";
+import { AddressType } from "@/contexts/AddressContext";
 
-export default function AddressLocation({ visible, onClose, address }: { visible: boolean; onClose: () => void; address: Address | null }) {
+const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c';
+
+export default function AddressLocation({ visible, onClose, address }: { visible: boolean; onClose: () => void; address: AddressType | null }) {
     
-    const [street, setStreet] = useState(address?.logradouro || '');
-    const [number, setNumber] = useState(address?.numero || '');
-    const [complement, setComplement] = useState(address?.complemento || '');
-    const [neighborhood, setNeighborhood] = useState(address?.bairro || '');
-    const [city, setCity] = useState(address?.cidade || '');
-    const [uf, setUf] = useState<string>(address?.uf || '');
-    const [cep, setCep] = useState(address?.cep || '');
-    const [isChecked, setIsChecked] = useState<boolean>(address?.isDefault || false);
-    const [addressLabel, setAddressLabel] = useState(address?.label || 'Residência');
+    const [street, setStreet] = useState<string>('');
+    const [number, setNumber] = useState<string>('');
+    const [complement, setComplement] = useState<string>('');
+    const [neighborhood, setNeighborhood] = useState<string>('');
+    const [city, setCity] = useState<string>('');
+    const [uf, setUf] = useState<string>('');
+    const [cep, setCep] = useState<string>('');
+    const [isChecked, setIsChecked] = useState<boolean>(false);
+    const [addressLabel, setAddressLabel] = useState<string>('Residência');
     const [loading, setLoading] = useState<boolean>(false);
-    
-    console.log(address)
-    const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c';
 
+    const addressId = address?.id || null;
+
+    useEffect(() => {
+        if (addressId) {
+            setStreet(address?.logradouro || "");
+            setNumber(address?.numero || "");
+            setComplement(address?.complemento || "");
+            setNeighborhood(address?.bairro || "");
+            setCity(address?.cidade || "");
+            setUf(address?.uf || "");
+            setCep(address?.cep || "");
+            setAddressLabel(address?.label || "Residência");
+            setIsChecked(address?.isDefault || false);
+        } else {
+            setStreet("");
+            setNumber("");
+            setComplement("");
+            setNeighborhood("");
+            setCity("");
+            setUf("");
+            setCep("");
+            setAddressLabel("Residência");
+            setIsChecked(false);
+        }
+    }, [visible, address]);
     const handleSave = async () => {
         if (!street || !number || !neighborhood || !city || !cep) {
             alert('Por favor, preencha todos os campos obrigatórios');
             return;
         }
-
         setLoading(true)
-        const data = {
-            street: street,
-            number: number,
-            complement: complement,
-            neighborhood: neighborhood,
-            city: city,
-            cep: cep,
-            uf: uf,
-            label: addressLabel,
-            isDefault: isChecked
-        };
-
         try{
-            const response = await api.post('/register-address', {data})
+            const response = await api.post('/register-address', {
+                street: street,
+                number: number,
+                complement: complement,
+                neighborhood: neighborhood,
+                city: city,
+                cep: cep,
+                uf: uf,
+                label: addressLabel,
+                isDefault: isChecked
+            })
             const res = response.data
 
             if(res.error){
@@ -60,8 +82,6 @@ export default function AddressLocation({ visible, onClose, address }: { visible
             setLoading(false)
         }
     };
-
-    if (!visible) return null;
 
     const viacep = async (cep: string) => {
         const cleanCep = cep.replace(/\D/g, '');
@@ -82,17 +102,27 @@ export default function AddressLocation({ visible, onClose, address }: { visible
             setLoading(false)
             return Alert.alert('CEP inválido', 'Não foi possível encontrar o endereço para o CEP informado. Por favor, verifique o CEP e tente novamente.');
         }
-    
+    }
+
+    const resetStates = () => {
+        setStreet('');
+        setNumber('');
+        setComplement('');
+        setNeighborhood('');
+        setCity('');
+        setUf('');
+        setCep('');
+        setIsChecked(false);
     }
 
     return(
-        <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={() => onClose()}>
+        <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={() => {onClose()}}>
             <View style={styles.overlay}>
                 <View style={styles.modalContent}>
                     {/* Header */}
                     <View style={styles.header}>
                         <Text style={styles.headerTitle}>Novo Endereço</Text>
-                        <TouchableOpacity onPress={onClose}>
+                        <TouchableOpacity onPress={() => {resetStates(); onClose()}}>
                             <Ionicons name="close" size={24} color="#333" />
                         </TouchableOpacity>
                     </View>
@@ -228,7 +258,7 @@ export default function AddressLocation({ visible, onClose, address }: { visible
                             {loading? (
                                 <ActivityIndicator size="small" color="#FFF" />
                             ) : (
-                                <Text style={styles.saveButtonText}>Confirmar Endereço</Text>
+                                <Text style={styles.saveButtonText}>{addressId ? 'Alterar Endereço' : 'Cadastrar Endereço'}</Text>
                             ) }
                         </TouchableOpacity>
                     </View>
@@ -305,7 +335,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     labelButtonActive: {
-        borderColor: process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c',
+        borderColor: MAIN_COLOR
     },
     labelButtonText: {
         fontSize: 12,

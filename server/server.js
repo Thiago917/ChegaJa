@@ -138,6 +138,10 @@ console.log('Iniciando servidor...')
             where: {userId, isDefault: true}
         })
 
+        const addresses = await prisma.Address.findMany({
+            where: {userId}
+        })
+
         if(!user) return res.status(404).send({message: 'Usuário não encontrado!'});
 
         return {
@@ -145,7 +149,8 @@ console.log('Iniciando servidor...')
             email: user.email,
             id: user.id,
             photo: user.photo,
-            address: address
+            address: address,
+            addresses: addresses
         };
     })
 
@@ -532,6 +537,19 @@ console.log('Iniciando servidor...')
         return res.send({message: 'Redefinição de senha concluída com sucesso!', error: false})
     })
 
+    fastify.get('/address', {onRequest:[fastify.authenticate]}, async (req, res) => {
+
+        const userId = req.user.id
+
+        if(!userId) return res.send({message: 'Usuário não foi encontrado!', error: true})
+
+        const address = await prisma.Address.findMany({
+            where: {userId}
+        })
+
+        return res.send(address)
+    })
+
     fastify.post('/register-address', {onRequest:[fastify.authenticate]}, async (req, res) => {
 
         const user_id = req.user.id
@@ -701,7 +719,6 @@ console.log('Iniciando servidor...')
 
 
 //SHOP - END
-
 
 
 //MENU - START

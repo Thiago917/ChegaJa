@@ -9,29 +9,34 @@ import { useCart } from "@/contexts/CartContext";
 import { CartItems } from "@/components/cartItems";
 import AddressLocation from "@/components/addressLocation";
 import { useUser } from "@/contexts/UserContext";
+import SubCartItems from "@/components/subCartItems";
+import { useAddress } from "@/contexts/AddressContext";
+
+const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR;
 
 export default function Home() {
 
     const router = useRouter();
-    const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR;
 
     const [search, setSearch] = useState<string>('');
     const [refreshing, setRefreshing] = useState<boolean>(false)
-    const {user} = useUser();
-    const { stores, loadNearShop} = useNears()
     const [visible, setVisible] = useState<boolean>(false)
     const [addressModal, setAddressModal] = useState<boolean>(false)
-    const { cart, getCartItemsCount, updateQuantity } = useCart();
+    const [subCartItemsVisible, setSubCartItemsVisible] = useState<boolean>(false)
     
-    const currentAddress = user?.address || null;
+    const { user } = useUser();
+    const { stores, loadNearShop} = useNears()
+    const { cart, getCartItemsCount, updateQuantity } = useCart();
+    const { address } = useAddress()
 
-    console.log('Endereço atual do usuário:', user?.address);
+    const currentAddress = address?.find((item) => item.isDefault === true )
 
     useFocusEffect(
         useCallback(() => {
             loadNearShop()
             checkBiometry();
-        }, [])
+            checkCartItems();
+        }, [cart])
     )
 
     const onRefresh = useCallback(async () => {
@@ -54,20 +59,23 @@ export default function Home() {
         }
     };
 
+    const checkCartItems = async () => {
+        cart.length > 0 ? setSubCartItemsVisible(true) : setSubCartItemsVisible(false);
+    }
+
     return (
         <View style={styles.container}>
             {/* 1. Header com Localização */}
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.locationLabel}>Entregar em</Text>
-                    <View style={styles.locationRow}>
-                        <Ionicons name="location" size={16} color={MAIN_COLOR} />
+                    <TouchableOpacity onPress={() => setAddressModal(true)}>
+                        <Text style={styles.locationLabel}>Entregar em</Text>
+                        <View style={styles.locationRow}>
+                            <Ionicons name="location" size={16} color={MAIN_COLOR} />
                             <Text style={styles.locationText} numberOfLines={1}>{currentAddress?.logradouro} - {currentAddress?.numero}</Text>
-
-                            {/* <TouchableOpacity onPress={() => setAddressModal}> */}
-                                <Ionicons name="chevron-down" size={14} color={MAIN_COLOR} style={{ marginLeft: 4 }} onPress={() => setAddressModal(true)} />
-                            {/* </TouchableOpacity> */}
-                    </View>
+                            <Ionicons name="chevron-down" size={14} color={MAIN_COLOR} style={{ marginLeft: 4 }} />
+                        </View>
+                    </TouchableOpacity>
                 </View>
                 <View style={styles.headerIcons}>
                     <TouchableOpacity style={styles.cartIconContainer} onPress={() => setVisible(true)}>
@@ -149,7 +157,9 @@ export default function Home() {
                 )}
             />
             <CartItems cart={cart} updateQuantity={updateQuantity} visible={visible} onClose={() => setVisible(false)} />
-            <AddressLocation visible={addressModal} onClose={() => setAddressModal(false)} address={currentAddress} />
+            <SubCartItems cart={cart} visible={subCartItemsVisible}/>
+                
+            {/* <AddressLocation visible={addressModal} onClose={() => setAddressModal(false)} address={currentAddress} /> */}
         </View>
     );
 }

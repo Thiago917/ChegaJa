@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Products } from '@/contexts/MenuContext';
 import { CartItems } from '@/components/cartItems';
 import { useCart } from '@/contexts/CartContext';
+import SubCartItems from '@/components/subCartItems';
 
 export default function MenuScreen() {
   const { shopId, distance } = useLocalSearchParams();
@@ -13,13 +14,17 @@ export default function MenuScreen() {
   const [shop, setShop] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [cartModalVisible, setCartModalVisible] = useState(false);
+  const [subCartItemsVisible, setSubCartItemsVisible] = useState(false);
   const { cart, updateQuantity, getCartItemsCount } = useCart();
   const distanceFormatted = distance ? `${parseFloat(distance as string).toFixed(1)} km` : '-- km';
   
   const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c';
 
   useEffect(() => {
-    if (shopId) loadMenu();
+    if (shopId) {
+      loadMenu()
+      checkCartItems();
+    };
   }, [shopId]);
 
   const loadMenu = async () => {
@@ -37,6 +42,10 @@ export default function MenuScreen() {
         }, 500)
     }
   };
+
+  const checkCartItems = async () => {
+    cart.length > 0 ? setSubCartItemsVisible(true) : setSubCartItemsVisible(false)
+  }
 
   if (loading) return <ActivityIndicator style={{ flex: 1 }} color={MAIN_COLOR} />;
 
@@ -117,7 +126,10 @@ export default function MenuScreen() {
                     <TouchableOpacity disabled={!product.status} style={[styles.quantityButton, !product.status && styles.disabledButton]} activeOpacity={0.8} onPress={() => updateQuantity(product, -1)}>
                       <Ionicons name="remove" size={20} color={!product.status ? '#CCC' : MAIN_COLOR} />
                     </TouchableOpacity>
-                    <TouchableOpacity disabled={!product.status} style={[styles.quantityButton, !product.status && styles.disabledButton]} activeOpacity={0.8} onPress={() => updateQuantity(product, 1)}>
+                    <TouchableOpacity disabled={!product.status} style={[styles.quantityButton, !product.status && styles.disabledButton]} activeOpacity={0.8} onPress={() => {
+                        setSubCartItemsVisible(true);
+                        updateQuantity(product, 1)
+                      }}>
                       <Ionicons name="add" size={20} color={!product.status ? '#CCC' : MAIN_COLOR} />
                     </TouchableOpacity>
                   </View>
@@ -128,8 +140,9 @@ export default function MenuScreen() {
           </View>
         ))}
 
-        <CartItems cart={cart} updateQuantity={updateQuantity} visible={cartModalVisible} onClose={() => setCartModalVisible(false)} />
       </ScrollView>
+      <CartItems cart={cart} updateQuantity={updateQuantity} visible={cartModalVisible} onClose={() => setCartModalVisible(false)} />
+      <SubCartItems cart={cart} visible={subCartItemsVisible}/>
 
 
     </View>

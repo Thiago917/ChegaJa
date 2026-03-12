@@ -1,158 +1,243 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Text, View, StyleSheet, ScrollView, TouchableOpacity, FlatList } from "react-native";
+import { Text, View, StyleSheet, ScrollView, TouchableOpacity, FlatList, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import AddressLocation from "@/components/addressLocation";
 import { useCart } from "@/contexts/CartContext";
 import { useUser } from '@/contexts/UserContext'
-import AddressLocation from "@/components/addressLocation";
+import { AddressType, useAddress } from "@/contexts/AddressContext";
+
+
+const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c';
 
 export default function Order(){
 
     const router = useRouter();
     const [paymentMethod, setPaymentMethod] = useState<'credit' | 'debit' | 'pix' | null>(null);
     const [visible, setVisible] = useState<boolean>(false);
+    const [step, setStep] = useState<number>(1);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [addressData, setAddressData] = useState<AddressType | null>(null);
+
     const { user } = useUser();
+    const { address } = useAddress();
     const { cart, getCartSubtotal, getCartTotal } = useCart();
-    
-    const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c';
-    const address = user?.address || null
+
+    // const address = user?.address || null
+    // const addresses = user?.addresses || null
     const subtotal = getCartSubtotal();
     const deliveryFee = 8.99;
     const total = getCartTotal();
 
     return(
         <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="chevron-back" size={24} color="#333" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Resumo do Pedido</Text>
-                <View style={styles.placeholder} />
-            </View>
+            <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'android' ? 'height' : 'padding'}>
+                
+                {/* Header */}
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                        <Ionicons name="chevron-back" size={24} color="#333" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Resumo do Pedido</Text>
+                    <View style={styles.placeholder} />
+                </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
 
-                {/* Seção de Entrega */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <Ionicons name="location" size={20} color={MAIN_COLOR} />
-                        <Text style={styles.sectionTitle}>Entrega em</Text>
-                    </View>
-                    <View style={styles.deliveryBox}>
-                        <Text style={styles.deliveryAddress}>{address?.logradouro}, {address?.numero}</Text>
-                        <Text style={styles.deliveryDetails}>{address?.complemento} - {address?.bairro}</Text>
-                        <TouchableOpacity style={styles.editButton} onPress={() => {setVisible(true)}}>
-                            <Text style={[styles.editButtonText, { color: MAIN_COLOR }]}>Alterar endereço</Text>
+                    {step === 1 ? ( // Detalhes do Pedido
+                        <>
+                            {/* Seção de Itens */}
+                            <View style={styles.section}>
+                                <View style={styles.sectionHeader}>
+                                    <Ionicons name="cart" size={20} color={MAIN_COLOR} />
+                                    <Text style={styles.sectionTitle}>Itens do Pedido</Text>
+                                </View>
+                                <FlatList
+                                    data={cart}
+                                    scrollEnabled={false}
+                                    keyExtractor={(item) => String(item.id)}
+                                    renderItem={({ item }) => (
+                                        <View style={styles.orderItem}>
+                                            <View style={styles.itemInfo}>
+                                                <Text style={styles.itemName}>{item.item.name}</Text>
+                                                <Text style={styles.itemQuantity}>Quantidade: {item.quantity}</Text>
+                                            </View>
+                                            <Text style={styles.itemPrice}>R$ {(item.item.price * item.quantity).toFixed(2).replace('.', ',')}</Text>
+                                        </View>
+                                    )}
+                                />
+                            </View>
+
+                            {/* Seção de Resumo */}
+                            <View style={styles.section}>
+                                <View style={styles.sectionHeader}>
+                                    <Ionicons name="calculator" size={20} color={MAIN_COLOR} />
+                                    <Text style={styles.sectionTitle}>Resumo</Text>
+                                </View>
+                                <View style={styles.summaryBox}>
+                                    <View style={styles.summaryRow}>
+                                        <Text style={styles.summaryLabel}>Subtotal</Text>
+                                        <Text style={styles.summaryValue}>R$ {subtotal.toFixed(2).replace('.', ',')}</Text>
+                                    </View>
+                                    <View style={styles.summaryRow}>
+                                        <Text style={styles.summaryLabel}>Taxa de entrega</Text>
+                                        <Text style={styles.summaryValue}>R$ {deliveryFee.toFixed(2).replace('.', ',')}</Text>
+                                    </View>
+                                    <View style={[styles.summaryRow, styles.totalRow]}>
+                                        <Text style={styles.totalLabel}>Total</Text>
+                                        <Text style={styles.totalValue}>R$ {total.toFixed(2).replace('.', ',')}</Text>
+                                    </View>
+                                </View>
+                            </View>
+
+                            {/* Seção de Observações */} 
+                            <View style={styles.section}>
+                                <View style={styles.sectionHeader}>
+                                    <Ionicons name="document-text" size={20} color={MAIN_COLOR} />
+                                    <Text style={styles.sectionTitle}>Observações</Text>
+                                </View>
+                                <View style={styles.notesBox}>
+                                    <TextInput style={styles.notesPlaceholder} placeholder="Adicionar observações sobre o pedido..." placeholderTextColor={'gray'} numberOfLines={4}/>
+                                </View>
+                            </View>
+                        </>
+                    ) : step === 2 ? ( // Endereço de Entrega
+                        <>
+                            <View style={styles.section}>
+                                <View style={[styles.sectionHeader, {justifyContent: 'space-between'}]}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Ionicons name="location" size={20} color={MAIN_COLOR} />
+                                        <Text style={styles.sectionTitle}>Entrega em</Text>
+                                    </View>
+
+                                    <View>
+                                        <TouchableOpacity onPress={() => setVisible(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                                            <Text style={styles.sectionTitle}>Novo</Text>
+                                            <Ionicons name="add-circle" size={20} color={MAIN_COLOR} />
+                                        </TouchableOpacity>
+                                    </View>
+
+                                </View>
+
+                                {address && address.length > 0 && address.map((item) => (
+                                    <View key={item.id} style={styles.deliveryBox}>
+                                        <Text style={styles.deliveryAddress}>
+                                            {item.logradouro}, {item.numero} {item.complemento ? `- ${item.complemento}` : ''}
+                                        </Text>
+                                        <Text style={styles.deliveryDetails}>{item.bairro} | CEP {item.cep}</Text>
+                                        
+                                        <TouchableOpacity 
+                                            style={styles.editButton} 
+                                            onPress={() => {
+                                                setAddressData(item); 
+                                                setVisible(true);
+                                            }}
+                                        >
+                                            <Text style={[styles.editButtonText, { color: MAIN_COLOR }]}>
+                                                Alterar endereço
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View> 
+
+                        </>
+                    ) : ( // Método de Pagamento
+                        <>
+                            <View style={styles.section}>
+                                <View style={styles.sectionHeader}>
+                                    <Ionicons name="card" size={20} color={MAIN_COLOR} />
+                                    <Text style={styles.sectionTitle}>Método de Pagamento</Text>
+                                </View>
+                                
+                                <TouchableOpacity 
+                                    style={[styles.paymentOption, paymentMethod === 'credit' && styles.paymentSelected]}
+                                    onPress={() => setPaymentMethod('credit')}
+                                >
+                                    <View style={styles.paymentRadio}>
+                                        {paymentMethod === 'credit' && <View style={[styles.radioFill, { backgroundColor: MAIN_COLOR }]} />}
+                                    </View>
+                                    <Text style={styles.paymentText}>Cartão de Crédito</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity 
+                                    style={[styles.paymentOption, paymentMethod === 'debit' && styles.paymentSelected]}
+                                    onPress={() => setPaymentMethod('debit')}
+                                >
+                                    <View style={styles.paymentRadio}>
+                                        {paymentMethod === 'debit' && <View style={[styles.radioFill, { backgroundColor: MAIN_COLOR }]} />}
+                                    </View>
+                                    <Text style={styles.paymentText}>Cartão de Débito</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity 
+                                    style={[styles.paymentOption, paymentMethod === 'pix' && styles.paymentSelected]}
+                                    onPress={() => setPaymentMethod('pix')}
+                                >
+                                    <View style={styles.paymentRadio}>
+                                        {paymentMethod === 'pix' && <View style={[styles.radioFill, { backgroundColor: MAIN_COLOR }]} />}
+                                    </View>
+                                    <Text style={styles.paymentText}>PIX</Text>
+                                </TouchableOpacity>
+                            </View> 
+                        </>
+
+                    )}
+
+                </ScrollView>
+                <AddressLocation visible={visible} onClose={() => {setVisible(false); setAddressData(null);}}  address={addressData}/>
+
+                <View style={[styles.footer, { backgroundColor: '#FAFAFA' }]}>
+                    <View style={styles.buttonContainer}>
+                        {/* Botão Voltar */}
+                        {step > 1 && (
+                            <TouchableOpacity 
+                                style={[styles.backButtonAction, { borderColor: MAIN_COLOR }]} 
+                                onPress={() => setStep(prev => prev - 1)}
+                                disabled={loading}
+                            >
+                                <Ionicons name="chevron-back" size={20} color={MAIN_COLOR} />
+                                <Text style={[styles.backButtonText, { color: MAIN_COLOR }]}>Voltar</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {/* Botão Continuar/Confirmar */}
+                        <TouchableOpacity 
+                            style={[
+                                styles.confirmButtonAction, 
+                                { backgroundColor: MAIN_COLOR, flex: 1, opacity: (step === 3 && !paymentMethod) || loading ? 0.7 : 1 }
+                            ]} 
+                            activeOpacity={0.8} 
+                            disabled={loading || (step === 3 && !paymentMethod)}
+                            onPress={() => {
+                                if (step < 3) {
+                                    setLoading(true);
+                                    setTimeout(() => {
+                                        setLoading(false);
+                                        setStep(prev => prev + 1);
+                                    }, 400);
+                                }
+                            }}
+                        >
+                            {loading ? (
+                                <ActivityIndicator size="small" color="#FFF" />
+                            ) : (
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Text style={styles.confirmButtonText}>
+                                        {step < 3 ? 'Continuar' : 'Confirmar Pedido'}
+                                    </Text>
+                                    <Ionicons 
+                                        name={step < 3 ? "chevron-forward" : "checkmark-circle"} 
+                                        size={20} 
+                                        color="#FFF" 
+                                        style={{ marginLeft: 8 }} 
+                                    />
+                                </View>
+                            )}
                         </TouchableOpacity>
                     </View>
                 </View>
-
-                <AddressLocation visible={visible} onClose={() => setVisible(false)} address={address}/>
-
-                {/* Seção de Itens */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <Ionicons name="cart" size={20} color={MAIN_COLOR} />
-                        <Text style={styles.sectionTitle}>Itens do Pedido</Text>
-                    </View>
-                    <FlatList
-                        data={cart}
-                        scrollEnabled={false}
-                        keyExtractor={(item) => String(item.id)}
-                        renderItem={({ item }) => (
-                            <View style={styles.orderItem}>
-                                <View style={styles.itemInfo}>
-                                    <Text style={styles.itemName}>{item.item.name}</Text>
-                                    <Text style={styles.itemQuantity}>Qtd: {item.quantity}</Text>
-                                </View>
-                                <Text style={styles.itemPrice}>R$ {(item.item.price * item.quantity).toFixed(2).replace('.', ',')}</Text>
-                            </View>
-                        )}
-                    />
-                </View>
-
-                {/* Seção de Resumo */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <Ionicons name="calculator" size={20} color={MAIN_COLOR} />
-                        <Text style={styles.sectionTitle}>Resumo</Text>
-                    </View>
-                    <View style={styles.summaryBox}>
-                        <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>Subtotal</Text>
-                            <Text style={styles.summaryValue}>R$ {subtotal.toFixed(2).replace('.', ',')}</Text>
-                        </View>
-                        <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>Taxa de entrega</Text>
-                            <Text style={styles.summaryValue}>R$ {deliveryFee.toFixed(2).replace('.', ',')}</Text>
-                        </View>
-                        <View style={[styles.summaryRow, styles.totalRow]}>
-                            <Text style={styles.totalLabel}>Total</Text>
-                            <Text style={styles.totalValue}>R$ {total.toFixed(2).replace('.', ',')}</Text>
-                        </View>
-                    </View>
-                </View>
-
-                {/* Seção de Pagamento */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <Ionicons name="card" size={20} color={MAIN_COLOR} />
-                        <Text style={styles.sectionTitle}>Método de Pagamento</Text>
-                    </View>
-                    
-                    <TouchableOpacity 
-                        style={[styles.paymentOption, paymentMethod === 'credit' && styles.paymentSelected]}
-                        onPress={() => setPaymentMethod('credit')}
-                    >
-                        <View style={styles.paymentRadio}>
-                            {paymentMethod === 'credit' && <View style={[styles.radioFill, { backgroundColor: MAIN_COLOR }]} />}
-                        </View>
-                        <Text style={styles.paymentText}>Cartão de Crédito</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity 
-                        style={[styles.paymentOption, paymentMethod === 'debit' && styles.paymentSelected]}
-                        onPress={() => setPaymentMethod('debit')}
-                    >
-                        <View style={styles.paymentRadio}>
-                            {paymentMethod === 'debit' && <View style={[styles.radioFill, { backgroundColor: MAIN_COLOR }]} />}
-                        </View>
-                        <Text style={styles.paymentText}>Cartão de Débito</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity 
-                        style={[styles.paymentOption, paymentMethod === 'pix' && styles.paymentSelected]}
-                        onPress={() => setPaymentMethod('pix')}
-                    >
-                        <View style={styles.paymentRadio}>
-                            {paymentMethod === 'pix' && <View style={[styles.radioFill, { backgroundColor: MAIN_COLOR }]} />}
-                        </View>
-                        <Text style={styles.paymentText}>PIX</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Observações */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <Ionicons name="document-text" size={20} color={MAIN_COLOR} />
-                        <Text style={styles.sectionTitle}>Observações</Text>
-                    </View>
-                    <View style={styles.notesBox}>
-                        <Text style={styles.notesPlaceholder}>Adicionar observações sobre o pedido...</Text>
-                    </View>
-                </View>
-
-            </ScrollView>
-
-            {/* Botão Flutuante de Confirmação */}
-            <TouchableOpacity 
-                style={[styles.confirmButton, { backgroundColor: MAIN_COLOR }]}
-                activeOpacity={0.8}
-            >
-                <Text style={styles.confirmButtonText}>Confirmar Pedido</Text>
-                <Ionicons name="checkmark" size={20} color="#FFF" style={{ marginLeft: 8 }} />
-            </TouchableOpacity>
+            </KeyboardAvoidingView>
         </View>
     )
 }
@@ -197,6 +282,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 16,
+        // justifyContent: 'space-between',
     },
     sectionTitle: {
         fontSize: 16,
@@ -209,7 +295,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         padding: 12,
         borderLeftWidth: 4,
-        borderLeftColor: process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c',
+        borderLeftColor: MAIN_COLOR,
     },
     deliveryAddress: {
         fontSize: 14,
@@ -290,7 +376,7 @@ const styles = StyleSheet.create({
     totalValue: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c',
+        color: MAIN_COLOR,
     },
     paymentOption: {
         flexDirection: 'row',
@@ -304,8 +390,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFF',
     },
     paymentSelected: {
-        borderColor: process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c',
-        backgroundColor: `${process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c'}10`,
+        borderColor: MAIN_COLOR,
+        backgroundColor: MAIN_COLOR,
     },
     paymentRadio: {
         width: 20,
@@ -359,5 +445,48 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    footer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: '#FFF',
+        borderTopWidth: 1,
+        borderTopColor: '#EEE',
+        paddingBottom: 30,
+        paddingTop: 12,
+        paddingHorizontal: 16,
+    },
+    buttonContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    backButtonAction: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    backButtonText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginLeft: 6,
+    },
+    confirmButtonAction: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        borderRadius: 12,
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
     }
 });

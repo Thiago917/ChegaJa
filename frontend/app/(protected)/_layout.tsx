@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { CartProvider } from "@/contexts/CartContext";
 import { UserProvider } from "@/contexts/UserContext";
+import { AddressProvider } from "@/contexts/AddressContext";
+
 
 
 export default function ProtectedLayout(){
@@ -35,8 +37,10 @@ export default function ProtectedLayout(){
     return(
         <CartProvider>
             <UserProvider>
-                <StatusBar style="dark" />
-                <Stack screenOptions={{headerShown: false}}/>
+                <AddressProvider>
+                    <StatusBar style="dark" />
+                    <Stack screenOptions={{headerShown: false}}/>
+                </AddressProvider>
             </UserProvider>
         </CartProvider>
     )

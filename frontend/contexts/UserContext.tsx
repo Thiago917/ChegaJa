@@ -2,30 +2,17 @@ import api from "@/services/api";
 import socket from "@/services/socket";
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
-export type Address = {
-    logradouro: string;
-    numero: string;
-    bairro: string;
-    complemento: string;
-    cidade: string;
-    cep: string;
-    uf: string;
-    label: string;
-    isDefault: boolean;
-}
-
 type User = {
     id: string;
     name: string;
     mail: string;
     photo: string;
-    address: Address | null;
 };
 
 type UserContextType = {
     user: User | null;
     loadUser: () => Promise<void>;
-        setUser: (id: string, updates: Partial<User>) => Promise<void>;
+    setUser: (id: string, updates: Partial<User>) => Promise<void>;
     };
 
 const UserContext = createContext<UserContextType>({} as UserContextType);
@@ -47,7 +34,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                     name: res.name,
                     mail: res.email,
                     photo: res.photo,
-                    address: res.address
                 });
             }
         } catch (err: any) {
@@ -64,9 +50,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             // Mapear os campos para o que o server espera
             const body: any = {};
             if(updates.name) body.name = updates.name;
-            if(updates.mail) body.mail = updates.mail;
-            if(updates.address) body.address = updates.address;
-            
+            if(updates.mail) body.mail = updates.mail;            
             const response = await api.patch(`/update-me/${id}`, body)
             const res = response.data
 
