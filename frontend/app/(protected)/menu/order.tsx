@@ -6,6 +6,7 @@ import AddressLocation from "@/components/addressLocation";
 import { useCart } from "@/contexts/CartContext";
 import { useUser } from '@/contexts/UserContext'
 import { AddressType, useAddress } from "@/contexts/AddressContext";
+import Checkbox from "expo-checkbox";
 
 
 const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c';
@@ -18,14 +19,28 @@ export default function Order(){
     const [step, setStep] = useState<number>(1);
     const [loading, setLoading] = useState<boolean>(false);
     const [addressData, setAddressData] = useState<AddressType | null>(null);
+    const [loadingId, setLoadingId] = useState<number | null>(null)
 
     const { user } = useUser();
-    const { address } = useAddress();
+    const { address, setAddress } = useAddress();
     const { cart, getCartSubtotal, getCartTotal } = useCart();
 
     const subtotal = getCartSubtotal();
     const deliveryFee = 8.99;
     const total = getCartTotal();
+
+    const toggleDefaultAddress = async (id: number) => {
+        setLoadingId(id)
+        try{    
+            await setAddress(id, {isDefault: true})
+        }
+        catch(err){
+            console.log('Deu ruim | ', err)
+        }
+        finally{
+            setLoadingId(null)
+        }
+    }
 
     return(
         <View style={styles.container}>
@@ -100,46 +115,84 @@ export default function Order(){
                             </View>
                         </>
                     ) : step === 2 ? ( // Endereço de Entrega
-                        <>
-                            <View style={styles.section}>
-                                <View style={[styles.sectionHeader, {justifyContent: 'space-between'}]}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                        <Ionicons name="location" size={20} color={MAIN_COLOR} />
-                                        <Text style={styles.sectionTitle}>Entrega em</Text>
-                                    </View>
-
-                                    <View>
-                                        <TouchableOpacity onPress={() => setVisible(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                                            <Text style={styles.sectionTitle}>Novo</Text>
-                                            <Ionicons name="add-circle" size={20} color={MAIN_COLOR} />
-                                        </TouchableOpacity>
-                                    </View>
-
+                        <View style={styles.section}>
+                            <View style={[styles.sectionHeader, { justifyContent: 'space-between', marginBottom: 16 }]}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Ionicons name="location" size={20} color={MAIN_COLOR} />
+                                    <Text style={styles.sectionTitle}>Selecione o endereço</Text>
                                 </View>
+                                <TouchableOpacity onPress={() => { setAddressData(null); setVisible(true); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                                    <Text style={[styles.sectionTitle, { fontSize: 14 }]}>Novo</Text>
+                                    <Ionicons name="add-circle" size={20} color={MAIN_COLOR} />
+                                </TouchableOpacity>
+                            </View>
 
-                                {address && address.length > 0 && address.map((item) => (
-                                    <View key={item.id} style={styles.deliveryBox}>
-                                        <Text style={styles.deliveryAddress}>
-                                            {item.logradouro}, {item.numero} {item.complemento ? `- ${item.complemento}` : ''}
-                                        </Text>
-                                        <Text style={styles.deliveryDetails}>{item.bairro} | CEP {item.cep}</Text>
-                                        
+                            {address?.map((item) => {
+
+                                return (
+                                    <TouchableOpacity 
+                                        key={item.id} 
+                                        activeOpacity={0.8}
+                                        onPress={() => {toggleDefaultAddress(item.id)}}
+                                        style={[
+                                            styles.deliveryBox, 
+                                            { 
+                                                marginBottom: 12,
+                                                borderLeftWidth: item.isDefault ? 6 : 4,
+                                                borderColor: item.isDefault ? MAIN_COLOR : '#DDD',
+                                                backgroundColor: item.isDefault ? '#fffafa' : '#F9F9F9',
+                                                elevation: item.isDefault ? 3 : 0,
+                                                shadowColor: MAIN_COLOR,
+                                                shadowOpacity: item.isDefault ? 0.1 : 0,
+                                                shadowRadius: 4,
+                                            }
+                                        ]}
+                                    >
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={[styles.deliveryAddress, { color: item.isDefault ? MAIN_COLOR : '#333' }]}>
+                                                    {item.logradouro}, {item.numero}, {item.complemento}
+                                                </Text>
+                                                <Text style={styles.deliveryDetails}>
+                                                    {item.bairro} | {item.cidade} - {item.estado}
+                                                </Text>
+                                            </View>
+                                            
+                                        <View style={{ width: 30, alignItems: 'center' }}>
+                                            {loadingId === item.id ? (
+                                                <ActivityIndicator size="small" color={MAIN_COLOR} />
+                                            ) : (
+                                                <View style={[
+                                                    styles.checkbox, 
+                                                    { backgroundColor: item.isDefault ? MAIN_COLOR : 'transparent', borderColor: item.isDefault ? MAIN_COLOR : 'black'}
+                                                ]}>
+                                                    {item.isDefault && <Ionicons name="checkmark" size={14} color="#FFF" />}
+                                                </View>
+                                            )}
+                                        </View>
+
+                                            <View style={{ 
+
+                                            }}>
+                                                {item.isDefault && <Ionicons name="checkmark" size={14} color="#FFF" />}
+                                            </View>
+                                        </View>
+
                                         <TouchableOpacity 
-                                            style={styles.editButton} 
+                                            style={[styles.editButton, { marginTop: 8, alignSelf: 'flex-start' }]} 
                                             onPress={() => {
                                                 setAddressData(item); 
                                                 setVisible(true);
                                             }}
                                         >
-                                            <Text style={[styles.editButtonText, { color: MAIN_COLOR }]}>
-                                                Alterar endereço
+                                            <Text style={[styles.editButtonText, { color: item.isDefault ? MAIN_COLOR : '#888' }]}>
+                                                Editar informações
                                             </Text>
                                         </TouchableOpacity>
-                                    </View>
-                                ))}
-                            </View> 
-
-                        </>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
                     ) : ( // Método de Pagamento
                         <>
                             <View style={styles.section}>
@@ -280,7 +333,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 16,
-        // justifyContent: 'space-between',
     },
     sectionTitle: {
         fontSize: 16,
@@ -486,5 +538,13 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
         shadowOffset: { width: 0, height: 2 },
+    },
+    checkbox:{
+        width: 22, 
+        height: 22, 
+        borderRadius: 11, 
+        borderWidth: 1.5, 
+        alignItems: 'center',
+        justifyContent: 'center',
     }
 });

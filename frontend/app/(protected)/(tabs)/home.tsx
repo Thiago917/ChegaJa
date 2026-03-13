@@ -27,9 +27,9 @@ export default function Home() {
     const { user } = useUser();
     const { stores, loadNearShop} = useNears()
     const { cart, getCartItemsCount, updateQuantity } = useCart();
-    const { address } = useAddress()
+    const { address } = useAddress();
 
-    const currentAddress = address?.find((item) => item.isDefault === true ) || null
+    const currentAddress = (Array.isArray(address) && address.length > 0) ? address.find((item) => item.isDefault === true) : null;
 
     useFocusEffect(
         useCallback(() => {
@@ -72,7 +72,7 @@ export default function Home() {
                         <Text style={styles.locationLabel}>Entregar em</Text>
                         <View style={styles.locationRow}>
                             <Ionicons name="location" size={16} color={MAIN_COLOR} />
-                            <Text style={styles.locationText} numberOfLines={1}>{currentAddress?.logradouro} - {currentAddress?.numero}</Text>
+                            <Text style={styles.locationText} numberOfLines={1}>{currentAddress?.logradouro} - {currentAddress?.numero}, {currentAddress?.complemento}</Text>
                             <Ionicons name="chevron-down" size={14} color={MAIN_COLOR} style={{ marginLeft: 4 }} />
                         </View>
                     </TouchableOpacity>
@@ -159,7 +159,7 @@ export default function Home() {
             <CartItems cart={cart} updateQuantity={updateQuantity} visible={visible} onClose={() => setVisible(false)} />
             <SubCartItems cart={cart} visible={subCartItemsVisible}/>
                 
-            <AddressLocation visible={addressModal} onClose={() => setAddressModal(false)} address={currentAddress} userId={Number(user?.id)} />
+            <AddressLocation visible={addressModal} onClose={() => setAddressModal(false)} address={currentAddress || null} userId={Number(user?.id)} />
         </View>
     );
 }

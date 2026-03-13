@@ -32,9 +32,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setCart(prev => {
 
       if(prev.length === 0){
-        Alert.alert('Sucesso', 'Produto adicionado ao carrinho!', [
+        Alert.alert('Produto adicionado ao carrinho!', 'Deseja finalizar sua compra?', [
           {text: 'Continuar comprando'},
-          {text: 'Ir para o carrinho', onPress: () => {return router.push('/menu/order')}}
+          {text: 'Sim!', onPress: () => {return router.push('/menu/order')}}
         ])
       }
 

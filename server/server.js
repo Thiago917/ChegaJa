@@ -552,52 +552,97 @@ console.log('Iniciando servidor...')
 
     fastify.post('/register-address', {onRequest:[fastify.authenticate]}, async (req, res) => {
 
-        const user_id = req.user.id
+        const userId = req.user.id
         const data = req.body
 
-        console.log(data)
-
-        if(!user_id || !data) return res.send({message: 'Dados não enviados para o backend', error: true})
+        if(!userId || !data) return res.send({message: 'Dados não enviados para o backend', error: true})
 
         const exists = await prisma.Address.findFirst({
-            where: {userId: user_id, cep: data.cep}
+            where: {userId: userId, cep: data.cep}
         })
 
         if(exists) return res.send({message: 'Endereço já está cadastrado', error: true})
         
-        const save = await prisma.Address.create({
-            data:{
-                userId: user_id,
-                logradouro: data.street,
-                numero: data.number,
-                complemento: data.complement,
-                bairro: data.neighborhood,
-                cidade: data.city,
-                estado: data.uf,
-                cep: data.cep,
-                apelido: data.label,
-                isDefault: data.isDefault 
-            }
-        })
+        const [_, __, result] = await prisma.$transaction([
+            ...(data.isDefault ? [prisma.address.updateMany({
+                where: { userId, isDefault: true },
+                data: { isDefault: false }
+            })] : [prisma.address.findFirst({ where: { id: 0 } })]),
+            prisma.address.create({
+                data:{
+                    userId: userId,
+                    logradouro: data.street,
+                    numero: data.number,
+                    complemento: data.complement,
+                    bairro: data.neighborhood,
+                    cidade: data.city,
+                    estado: data.uf,
+                    cep: data.cep,
+                    apelido: data.label,
+                    isDefault: data.isDefault 
+                }
+            }),
+            prisma.address.findMany({
+                where: {userId}
+            })
+        ])
 
-        if(!save) return res.send({message: 'Erro ao cadastrar endereço', error: true})
+        if(!result) return res.send({message: 'Erro ao cadastrar endereço', error: true})
 
-        io.emit('new-address', {
-            userId: user_id,
-            logradouro: data.street,
-            numero: data.number,
-            complemento: data.complement,
-            bairro: data.neighborhood,
-            cidade: data.city,
-            estado: data.uf,
-            cep: data.cep,
-            apelido: data.label,
-            isDefault: data.isDefault || true
-        })
+        io.emit('new-address-list', result)
 
-        return res.send({message: 'Endereço cadastrado com sucesso!', error: false})
+        return res.send({message: 'Endereço cadastrado com sucesso!', data: result, error: false})
 
     })
+
+    fastify.patch('/update-register/:id', { onRequest: [fastify.authenticate] }, async (req, res) => {
+        const userId = req.user.id;
+        const id = Number(req.params.id);
+        const updates = req.body.updates;
+
+        console.log(Object.values(updates).length)
+
+        if (!userId || !updates) {
+            return res.send({ message: 'Dados insuficientes', error: true });
+        }
+
+        try {
+            let updatedAddress;
+
+            if (Object.values(updates) <= 1) {
+                 
+                const [_, __, result] = await prisma.$transaction([
+                    prisma.address.updateMany({
+                        where: { userId, isDefault: true },
+                        data: { isDefault: false }
+                    }),
+                    prisma.address.update({
+                        where: { id },
+                        data: { isDefault: true }
+                    }),
+                    prisma.address.findMany({
+                        where: {userId}
+                    })
+                ]);
+                io.emit('new-address-list', result);
+                updatedAddress = result;
+            } else {
+                
+                updatedAddress = await prisma.address.update({
+                    where: { id },
+                    data: updates 
+                });
+                
+                io.emit('updated-address', updatedAddress);
+            }
+            
+            return res.send({ message: 'Endereço atualizado!', error: false, data: updatedAddress });
+
+        } catch (err) {
+            console.error(err);
+            return res.status(500).send({ message: 'Erro interno no servidor', error: true });
+        }
+    });
 
 //USER - END
 
@@ -625,7 +670,6 @@ console.log('Iniciando servidor...')
 
         const user_id = req.user.id
         const {lat, long} = req.body
-        console.log({lat: lat, long: long})
         const radiusKm = 10
 
         if(!user_id || !lat || !long) return res({message: 'Não foi possível encontrar dados do usuário', error: true})

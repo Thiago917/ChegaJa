@@ -25,7 +25,6 @@ export default function AddressLocation({ visible, onClose, address, userId }: {
 
     const addressId = address?.id || null;
     const { setAddress } = useAddress()
-    const { user } = useUser()
 
     useEffect(() => {
         if (addressId) {
@@ -34,9 +33,9 @@ export default function AddressLocation({ visible, onClose, address, userId }: {
             setComplement(address?.complemento || "");
             setNeighborhood(address?.bairro || "");
             setCity(address?.cidade || "");
-            setUf(address?.uf || "");
+            setUf(address?.estado || "");
             setCep(address?.cep || "");
-            setAddressLabel(address?.label || "Residência");
+            setAddressLabel(address?.apelido || "Residência");
             setIsChecked(address?.isDefault || false);
         } else {
             setStreet("");
@@ -60,25 +59,42 @@ export default function AddressLocation({ visible, onClose, address, userId }: {
         setLoading(true)
         try{
 
-            const response = await api.post('/register-address', {
-                street: street,
-                number: number,
-                complement: complement,
-                neighborhood: neighborhood,
-                city: city,
-                cep: cep,
-                uf: uf,
-                label: addressLabel,
-                isDefault: isChecked
-            })
-            const res = response.data
-
-            if(res.error){
-                return Alert.alert('Erro', `${res.message}`)
+            if(addressId){
+                await setAddress(addressId, {
+                    logradouro: street,
+                    numero: number,
+                    complemento: complement,
+                    bairro: neighborhood,
+                    cidade: city, 
+                    cep: cep,
+                    estado: uf,
+                    apelido: addressLabel,
+                    isDefault: isChecked
+                })
+                onClose()
             }
+            else{
 
-            Alert.alert('Erro', `${res.message}`)
-            return onClose();
+                const response = await api.post('/register-address', {
+                    street: street,
+                    number: number,
+                    complement: complement,
+                    neighborhood: neighborhood,
+                    city: city,
+                    cep: cep,
+                    uf: uf,
+                    label: addressLabel,
+                    isDefault: isChecked
+                })
+                const res = response.data
+                
+                if(res.error){
+                    return Alert.alert('Erro', `${res.message}`)
+                }
+                
+                Alert.alert('Erro', `${res.message}`)
+                return onClose();
+            }
         }
         catch(err){
             return console.log('Erro ao salvar endereço: ', err);
@@ -166,6 +182,7 @@ export default function AddressLocation({ visible, onClose, address, userId }: {
                                 placeholder="00000-000"
                                 placeholderTextColor="#CCC"
                                 value={cep}
+                                keyboardType="number-pad"
                                 onChangeText={setCep}
                                 mask={[/\d/, /\d/, /\d/, /\d/, /\d/, '-', /\d/, /\d/, /\d/]}
                                 onBlur={() => viacep(cep)}

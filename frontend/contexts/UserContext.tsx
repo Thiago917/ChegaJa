@@ -71,12 +71,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     };
 
     useEffect(() => {
-        loadUser();
-
-        socket.on('new-address', (address) => {
-            setUserState(prev => prev ? ({ ...prev, address }) : prev);
-        })
-    
+        loadUser();  
     }, []);
 
     return (
