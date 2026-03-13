@@ -5,11 +5,11 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-      "dev": "nodemon server.js",
-      "start": "npx prisma migrate deploy && node server.js",
-      "build": "prisma generate", 
-      "postinstall": "prisma generate"
-    },
+    "dev": "nodemon server.js",
+    "start": "npx prisma migrate deploy && node server.js",
+    "build": "prisma generate",
+    "postinstall": "prisma generate"
+  },
   "dependencies": {
     "@fastify/cors": "^11.2.0",
     "@fastify/helmet": "^13.0.2",
@@ -22,6 +22,7 @@
     "nodemailer": "^8.0.1",
     "prisma": "^5.22.0",
     "socket.io": "^4.8.3",
+    "stripe": "^20.4.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {

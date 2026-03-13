@@ -6,6 +6,7 @@ import { ActivityIndicator, View } from "react-native";
 import { CartProvider } from "@/contexts/CartContext";
 import { UserProvider } from "@/contexts/UserContext";
 import { AddressProvider } from "@/contexts/AddressContext";
+import { StripeProvider } from '@stripe/stripe-react-native'
 
 
 
@@ -38,8 +39,10 @@ export default function ProtectedLayout(){
         <CartProvider>
             <UserProvider>
                 <AddressProvider>
-                    <StatusBar style="dark" />
-                    <Stack screenOptions={{headerShown: false}}/>
+                    <StripeProvider publishableKey={`${process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLED_KEY}`} merchantIdentifier="merchant.com.chegaja">
+                        <StatusBar style="dark" />
+                        <Stack screenOptions={{headerShown: false}}/>
+                    </StripeProvider>
                 </AddressProvider>
             </UserProvider>
         </CartProvider>

@@ -15,11 +15,16 @@ const fastify = Fastify({logger: true})
 await fastify.register(cors);
 await fastify.register(jwtPlugin)
 await fastify.register(authPlugin)
+
 await fastify.register(rateLimit, {
     max: 100,
     timeWindow: '1 minute'
 });
 await fastify.register(Helmet)
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
+await fastify.decorate('stripe', stripe)
 
 const prisma = new PrismaClient();
 
@@ -600,8 +605,6 @@ console.log('Iniciando servidor...')
         const id = Number(req.params.id);
         const updates = req.body.updates;
 
-        console.log(Object.values(updates).length)
-
         if (!userId || !updates) {
             return res.send({ message: 'Dados insuficientes', error: true });
         }
@@ -609,8 +612,8 @@ console.log('Iniciando servidor...')
         try {
             let updatedAddress;
 
-            if (Object.values(updates) <= 1) {
-                 
+            if (Object.values(updates).length <= 1) {
+
                 const [_, __, result] = await prisma.$transaction([
                     prisma.address.updateMany({
                         where: { userId, isDefault: true },
@@ -924,6 +927,45 @@ console.log('Iniciando servidor...')
     });
 
 //ORDER - END
+
+
+//STRIPE - START
+
+    fastify.post('/create-payment-sheet', {onRequest:[fastify.authenticate]}, async (req, res) => {
+        try{
+            const {amount, addressId} = req.body
+            const userId = req.user.id
+
+            const customer = await stripe.customers.create()
+            const total_amount = Math.round(amount * 100)
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: total_amount,
+                currency: 'brl',
+                customer: customer.id,
+                automatic_payment_methods: {enabled: true},
+                metadata:{
+                    addressId: addressId,
+                    userId: userId
+                }
+            })
+
+            return res.send({
+                paymentIntent: paymentIntent.client_secret,
+                customer: customer,
+                publishableKey: process.env.STRIPE_PUBLISHABLED_KEY
+            })
+        
+        
+        }
+        catch(err){
+            console.log(err)
+            return res.send({message: err, error: true})
+        }
+    })
+
+
+
+//STRIPE - END
 
 
 const start = async () => {

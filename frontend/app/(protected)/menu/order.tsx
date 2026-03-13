@@ -1,12 +1,14 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import { Text, View, StyleSheet, ScrollView, TouchableOpacity, FlatList, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
+import { useEffect, useState } from "react";
+import { Text, View, StyleSheet, ScrollView, TouchableOpacity, FlatList, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AddressLocation from "@/components/addressLocation";
 import { useCart } from "@/contexts/CartContext";
 import { useUser } from '@/contexts/UserContext'
 import { AddressType, useAddress } from "@/contexts/AddressContext";
 import Checkbox from "expo-checkbox";
+import { useStripe } from "@stripe/stripe-react-native";
+import api from "@/services/api";
 
 
 const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c';
@@ -23,7 +25,8 @@ export default function Order(){
 
     const { user } = useUser();
     const { address, setAddress } = useAddress();
-    const { cart, getCartSubtotal, getCartTotal } = useCart();
+    const { cart, getCartSubtotal, getCartTotal, clearCart } = useCart();
+    const { initPaymentSheet, presentPaymentSheet } = useStripe()
 
     const subtotal = getCartSubtotal();
     const deliveryFee = 8.99;
@@ -42,6 +45,59 @@ export default function Order(){
         }
     }
 
+    const fetchPaymentSheet = async () => {
+        try{
+            const response = await api.post('/create-payment-sheet', {
+                amount: total,
+                addressId: addressData?.id
+            })
+            if(response.data.error){
+                console.log('Error : ',response.data.message)
+                return;
+            }
+            return response.data
+        }
+        catch(err){
+            console.log('Erro no fetchPaymentSheet | ',err)
+        }
+    }
+
+    const initializePaymentSheet = async () => {
+
+        const data = await fetchPaymentSheet()
+        if(!data || data.error) return Alert.alert('Erro', 'Não foi possível preparar o pagamento');
+
+        const {paymentIntent, customer} = await fetchPaymentSheet()
+
+        const {error} = await initPaymentSheet({
+            merchantDisplayName: 'ChegaJá App',
+            customerId: customer.id,
+            paymentIntentClientSecret: paymentIntent,
+            defaultBillingDetails: {name: user?.name},
+            allowsDelayedPaymentMethods: false,
+        })
+
+    }
+
+    const openPaymentSheet = async () => {
+        const { error } = await presentPaymentSheet()
+
+        if(error){
+            Alert.alert(`Erro no pagamento: ${error.code}`, error.message)
+        }
+        else{
+            Alert.alert('🚀 Sucesso!', 'Seu pedido foi pago e processado.')
+            setTimeout(() => {
+                clearCart()
+                return router.push('/home')
+            }, 700)
+        }
+    }
+
+    useEffect(() => {
+        initializePaymentSheet();
+    }, [])
+ 
     return(
         <View style={styles.container}>
             <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'android' ? 'height' : 'padding'}>
@@ -150,7 +206,9 @@ export default function Order(){
                                     >
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                             <View style={{ flex: 1 }}>
-                                                <Text style={[styles.deliveryAddress, { color: item.isDefault ? MAIN_COLOR : '#333' }]}>
+
+                                                <Text style={[styles.deliveryAddress, , { color: item.isDefault ? MAIN_COLOR : '#333' }]}>{item.apelido}</Text>
+                                                <Text style={[styles.deliveryDetails]}>
                                                     {item.logradouro}, {item.numero}, {item.complemento}
                                                 </Text>
                                                 <Text style={styles.deliveryDetails}>
@@ -268,7 +326,11 @@ export default function Order(){
                                         setStep(prev => prev + 1);
                                     }, 400);
                                 }
+                                else if(step === 3){
+                                    openPaymentSheet()
+                                }
                             }}
+                            
                         >
                             {loading ? (
                                 <ActivityIndicator size="small" color="#FFF" />

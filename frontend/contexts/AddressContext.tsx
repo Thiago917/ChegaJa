@@ -10,8 +10,8 @@ export type AddressType = {
     complemento: string;
     cidade: string;
     cep: string;
-    uf: string;
-    label: string;
+    estado: string;
+    apelido: string;
     isDefault: boolean;
 }
 

@@ -20,7 +20,8 @@ export default function AddressLocation({ visible, onClose, address, userId }: {
     const [uf, setUf] = useState<string>('');
     const [cep, setCep] = useState<string>('');
     const [isChecked, setIsChecked] = useState<boolean>(false);
-    const [addressLabel, setAddressLabel] = useState<string>('Residência');
+    const [addressIndex, setAddressIndex] = useState<number>(1);
+    const [addressLabel, setAddressLabel] = useState<string | undefined >(undefined)
     const [loading, setLoading] = useState<boolean>(false);
 
     const addressId = address?.id || null;
@@ -28,6 +29,11 @@ export default function AddressLocation({ visible, onClose, address, userId }: {
 
     useEffect(() => {
         if (addressId) {
+
+            if(address?.apelido === 'Residência') setAddressIndex(0) 
+            else if(address?.apelido === 'Trabalho') setAddressIndex(1) 
+            else{setAddressIndex(2);setAddressLabel(address?.apelido)}
+
             setStreet(address?.logradouro || "");
             setNumber(address?.numero || "");
             setComplement(address?.complemento || "");
@@ -35,7 +41,6 @@ export default function AddressLocation({ visible, onClose, address, userId }: {
             setCity(address?.cidade || "");
             setUf(address?.estado || "");
             setCep(address?.cep || "");
-            setAddressLabel(address?.apelido || "Residência");
             setIsChecked(address?.isDefault || false);
         } else {
             setStreet("");
@@ -45,11 +50,18 @@ export default function AddressLocation({ visible, onClose, address, userId }: {
             setCity("");
             setUf("");
             setCep("");
-            setAddressLabel("Residência");
+            setAddressIndex(0)
             setIsChecked(false);
         }
     }, [visible, address]);
 
+
+    const handleLabelPress = (i: number) => {
+        setAddressIndex(i)
+        if(i === 0) setAddressLabel('Residência')
+        else if (i === 1) setAddressLabel('Trabalho')
+        else setAddressLabel('')
+    }
 
     const handleSave = async () => {
         if (!street || !number || !neighborhood || !city || !cep) {
@@ -154,18 +166,18 @@ export default function AddressLocation({ visible, onClose, address, userId }: {
                         <View style={styles.section}>
                             <Text style={styles.label}>Tipo de Endereço *</Text>
                             <View style={styles.labelOptions}>
-                                {['Residência', 'Trabalho', 'Outro'].map((label) => (
+                                {['Residência', 'Trabalho', 'Outro'].map((label, i) => (
                                     <TouchableOpacity
                                         key={label}
                                         style={[
                                             styles.labelButton,
-                                            addressLabel === label && [styles.labelButtonActive, { backgroundColor: MAIN_COLOR }]
+                                            addressIndex === i && [styles.labelButtonActive, { backgroundColor: MAIN_COLOR }]
                                         ]}
-                                        onPress={() => setAddressLabel(label)}
+                                        onPress={() => handleLabelPress(i)}
                                     >
                                         <Text style={[
                                             styles.labelButtonText,
-                                            addressLabel === label && styles.labelButtonTextActive
+                                            addressIndex === i && styles.labelButtonTextActive
                                         ]}>
                                             {label}
                                         </Text>
@@ -173,6 +185,19 @@ export default function AddressLocation({ visible, onClose, address, userId }: {
                                 ))}
                             </View>
                         </View>
+
+                        {addressIndex === 2 ? (
+                            <View style={styles.section}>
+                                <Text style={styles.label}>Dê um apelido para seu endereço</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Casa da namorada(o)"
+                                    value={addressLabel}
+                                    placeholderTextColor="#CCC"
+                                    onChangeText={(text) => setAddressLabel(text)}
+                                />
+                            </View>
+                        ) : null}
 
                         {/* CEP */}
                         <View style={styles.section}>
