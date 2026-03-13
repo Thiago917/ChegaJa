@@ -23,8 +23,6 @@ export default function Order(){
     const { address } = useAddress();
     const { cart, getCartSubtotal, getCartTotal } = useCart();
 
-    // const address = user?.address || null
-    // const addresses = user?.addresses || null
     const subtotal = getCartSubtotal();
     const deliveryFee = 8.99;
     const total = getCartTotal();
@@ -185,7 +183,7 @@ export default function Order(){
                     )}
 
                 </ScrollView>
-                <AddressLocation visible={visible} onClose={() => {setVisible(false); setAddressData(null);}}  address={addressData}/>
+                <AddressLocation visible={visible} onClose={() => {setVisible(false); setAddressData(null);}}  address={addressData} userId={Number(user?.id)}/>
 
                 <View style={[styles.footer, { backgroundColor: '#FAFAFA' }]}>
                     <View style={styles.buttonContainer}>

@@ -553,7 +553,7 @@ console.log('Iniciando servidor...')
     fastify.post('/register-address', {onRequest:[fastify.authenticate]}, async (req, res) => {
 
         const user_id = req.user.id
-        const data = req.body.data
+        const data = req.body
 
         console.log(data)
 

@@ -17,7 +17,7 @@ export type AddressType = {
 type Address = {
     address: AddressType[] | null;
     loadAddress: (user_id: number) => Promise<void>;
-    setAddress: (id: number, updates: Partial<Address>) => Promise<void>
+    setAddress: (id: number, updates: Partial<AddressType>) => Promise<void>
 }
 
 const AddressContext = createContext<Address>({} as Address)
@@ -44,7 +44,7 @@ export const AddressProvider = ({children}: {children: React.ReactNode}) => {
 
     }
 
-    const setAddress = async (id: number, updates: Partial<Address>) => {
+    const setAddress = async (id: number, updates: Partial<AddressType>) => {
         if(!address) return;
         const prev = address
 

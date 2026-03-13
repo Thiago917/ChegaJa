@@ -29,7 +29,7 @@ export default function Home() {
     const { cart, getCartItemsCount, updateQuantity } = useCart();
     const { address } = useAddress()
 
-    const currentAddress = address?.find((item) => item.isDefault === true )
+    const currentAddress = address?.find((item) => item.isDefault === true ) || null
 
     useFocusEffect(
         useCallback(() => {
@@ -159,7 +159,7 @@ export default function Home() {
             <CartItems cart={cart} updateQuantity={updateQuantity} visible={visible} onClose={() => setVisible(false)} />
             <SubCartItems cart={cart} visible={subCartItemsVisible}/>
                 
-            {/* <AddressLocation visible={addressModal} onClose={() => setAddressModal(false)} address={currentAddress} /> */}
+            <AddressLocation visible={addressModal} onClose={() => setAddressModal(false)} address={currentAddress} userId={Number(user?.id)} />
         </View>
     );
 }

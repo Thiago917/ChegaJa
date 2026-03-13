@@ -6,11 +6,11 @@ import api from "@/services/api";
 import MaskInput from 'react-native-mask-input'
 import Checkbox from "expo-checkbox";
 import { useUser } from "@/contexts/UserContext";
-import { AddressType } from "@/contexts/AddressContext";
+import { AddressType, useAddress } from "@/contexts/AddressContext";
 
 const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c';
 
-export default function AddressLocation({ visible, onClose, address }: { visible: boolean; onClose: () => void; address: AddressType | null }) {
+export default function AddressLocation({ visible, onClose, address, userId }: { visible: boolean; onClose: () => void; address: AddressType | null; userId: number }) {
     
     const [street, setStreet] = useState<string>('');
     const [number, setNumber] = useState<string>('');
@@ -24,6 +24,8 @@ export default function AddressLocation({ visible, onClose, address }: { visible
     const [loading, setLoading] = useState<boolean>(false);
 
     const addressId = address?.id || null;
+    const { setAddress } = useAddress()
+    const { user } = useUser()
 
     useEffect(() => {
         if (addressId) {
@@ -48,6 +50,8 @@ export default function AddressLocation({ visible, onClose, address }: { visible
             setIsChecked(false);
         }
     }, [visible, address]);
+
+
     const handleSave = async () => {
         if (!street || !number || !neighborhood || !city || !cep) {
             alert('Por favor, preencha todos os campos obrigatórios');
@@ -55,6 +59,7 @@ export default function AddressLocation({ visible, onClose, address }: { visible
         }
         setLoading(true)
         try{
+
             const response = await api.post('/register-address', {
                 street: street,
                 number: number,
@@ -69,14 +74,14 @@ export default function AddressLocation({ visible, onClose, address }: { visible
             const res = response.data
 
             if(res.error){
-                Alert.alert('Erro', `${res.message}`)
+                return Alert.alert('Erro', `${res.message}`)
             }
 
             Alert.alert('Erro', `${res.message}`)
-            onClose()
+            return onClose();
         }
         catch(err){
-            console.log('Erro ao salvar endereço: ', err);
+            return console.log('Erro ao salvar endereço: ', err);
         }
         finally {
             setLoading(false)
