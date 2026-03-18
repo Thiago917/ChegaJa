@@ -1,37 +1,46 @@
 import axios from "axios";
-
-
 import admin from 'firebase-admin';
 
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT 
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-  : require('./chegaja-84e0c-firebase-adminsdk-xxxx.json'); 
+// 1. Pegamos a string da variável de ambiente
+const serviceAccountVar = process.env.FIREBASE_SERVICE_ACCOUNT;
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
+// 2. Inicialização do Firebase (Apenas se a variável existir)
+if (serviceAccountVar && !admin.apps.length) {
+    try {
+        const serviceAccount = JSON.parse(serviceAccountVar);
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+        });
+        console.log("✅ Firebase Admin inicializado com sucesso.");
+    } catch (error) {
+        console.error("❌ Erro ao processar FIREBASE_SERVICE_ACCOUNT:", error.message);
+    }
+} else if (!serviceAccountVar) {
+    console.warn("⚠️ Aviso: FIREBASE_SERVICE_ACCOUNT não configurada no ambiente.");
 }
 
-export  const sendPushNotification = async (expoPushToken, title, body, data = {}) => {
+// 3. Função de envio via Expo
+export const sendPushNotification = async (expoPushToken, title, body, data = {}) => {
+    if (!expoPushToken) return;
 
-    try{
-        const response = await axios.post('https://exp.host/--/api/v2/push/send' , {
-            to: expoPushToken,
-            sound: 'default',
-            title,
-            body,
-            data
-        }, {headers:{
-            Accept: 'application/json',
-            "Accept-encoding": 'gzip, deflate',
-            "Content-Type": 'application/json'
-        }})
+    const message = {
+        to: expoPushToken,
+        sound: 'default',
+        title,
+        body,
+        data
+    };
 
-        const res = response.data
-        console.log('notificação enviada: ', res)
+    try {
+        const response = await axios.post('https://exp.host/--/api/v2/push/send', message, {
+            headers: {
+                'Accept': 'application/json',
+                'Accept-encoding': 'gzip, deflate',
+                'Content-Type': 'application/json'
+            }
+        });
+        console.log('Push enviado:', response.data);
+    } catch (err) {
+        console.error('Erro no Push:', err.response?.data || err.message);
     }
-    catch(err){
-        console.log('Erro ao enviar notificações: ',err)
-    }
-}
+};
