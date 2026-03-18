@@ -19,6 +19,7 @@ model User {
   email       String  @unique
   photo       String 
   password    String
+  pushToken   String?
   created_at  DateTime @default(now())
 
   Addresses         Address[]
@@ -113,17 +114,33 @@ model Product {
   UpdatedAt   DateTime  @updatedAt
 
   shop    Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  orderItems  OrderItems[]
 }
 
 model Order {
   id          Int       @id @default(autoincrement())
   userId      Int
   shopId      Int
-  items       String    // JSON string of items
   total       Float
   status      String    @default("pending")
+  paymentId   String?   @unique
   createdAt   DateTime  @default(now())
 
   user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   shop    Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  orderItems  OrderItems[]
+}
+
+model OrderItems {
+ id           Int       @id @default(autoincrement())
+ orderId      Int   
+ productId    Int 
+ quantity     Int
+ price        Float
+ created_at   DateTime  @default(now()) 
+
+ product    Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+ order      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }

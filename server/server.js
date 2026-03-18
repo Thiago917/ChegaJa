@@ -10,6 +10,9 @@ import nodemailer from 'nodemailer';
 import rateLimit from '@fastify/rate-limit' 
 import Helmet from '@fastify/helmet';
 import { Server } from 'socket.io';
+import Stripe from 'stripe';
+import axios from 'axios';
+import { sendPushNotification } from './services/sendNotify.js';
 
 const fastify = Fastify({logger: true})
 await fastify.register(cors);
@@ -21,7 +24,6 @@ await fastify.register(rateLimit, {
     timeWindow: '1 minute'
 });
 await fastify.register(Helmet)
-import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 await fastify.decorate('stripe', stripe)
@@ -97,22 +99,35 @@ const searchArea = async (lat, long, radiusKm ) => {
     }
 }
 
-const calculateDistance = (lat1, long1, lat2, long2) => {
-    const earthRadius = 6371 // km
+const calculateDistance = async (lat1, long1, lat2, long2) => {
+   
+    const api_url = process.env.GOOGLE_MAPS_API_MATRIX_URL
+    const api_key = process.env.GOOGLE_MAPS_API_MATRIX_SECKEY
+
+    const response = await axios.get(`${api_url}?origins=${lat1},${long1}&destinations=${lat2},${long2}&key=${api_key}`)
+    const res = response.data
+    const distance = res.rows[0].elements[0].distance.text 
+    const frete = Number(distance.split(' ')[0]) * 0.5
+    return {
+        distance: distance,
+        time: res.rows[0].elements[0].duration.text.split(' ')[0],
+        frete: Math.round(frete).toFixed(2)
+    }
+    // const earthRadius = 6371 // km
     
-    const toRad = (degrees) => degrees * (Math.PI / 180)
+    // const toRad = (degrees) => degrees * (Math.PI / 180)
     
-    const dLat = toRad(lat2 - lat1)
-    const dLong = toRad(long2 - long1)
+    // const dLat = toRad(lat2 - lat1)
+    // const dLong = toRad(long2 - long1)
     
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-              Math.sin(dLong / 2) * Math.sin(dLong / 2)
+    // const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    //           Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    //           Math.sin(dLong / 2) * Math.sin(dLong / 2)
     
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-    const distance = earthRadius * c
+    // const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    // const distance = earthRadius * c
     
-    return Math.round(distance * 100) / 100 // Retorna com 2 casas decimais
+    // return Math.round(distance * 100) / 100 // Retorna com 2 casas decimais
 }
 
 const resetEmailCode = new Map();
@@ -127,7 +142,6 @@ const validaToken = async (token) => {
     }
 }
 
-console.log('Iniciando servidor...')
 
 //USER - START
 
@@ -361,24 +375,10 @@ console.log('Iniciando servidor...')
         return res.send({message: 'Validação de token feita com sucesso, tokens novos gerados', accessToken: newAccessTk, refreshToken: newRefreshTk, error: false, name: getUser.name})
     })
 
-    fastify.post('/update-user', {onRequest:[fastify.authenticate]}, async (req, res) => {
+    fastify.patch('/update-user/:id', {onRequest:[fastify.authenticate]}, async (req, res) => {
 
-        const {name} = req.body
-        const {mail} = req.body
         const user_id = req.user.id
-
-
-        const integrity = registerSchema.parse()
-        
-        if(!integrity.success){
-            const message = result.error.issues.map(e => e.message)
-            return res.send({
-                error: true,
-                message: message,
-                details: result.error.format()
-            })
-        }
-
+        const updates = req.body.updates
 
         const find = await prisma.user.findUnique({
             where: {id: user_id}
@@ -386,11 +386,9 @@ console.log('Iniciando servidor...')
         
         if(!find) return res.send({message: 'Usuário não encontrado', error: true})
 
-        if(mail === mail && name === name) return res.send({message: "Dados mantidos.", error: false})
-
         const update_data = await prisma.user.update({
             where: {id: user_id},
-            data:{name: name, email: mail}
+            data: updates
         })
 
         if(!update_data) return res.send({message: 'Erro ao atualizar dados do usuário', error: true})
@@ -650,7 +648,6 @@ console.log('Iniciando servidor...')
 //USER - END
 
 
-
 //SHOP - START
 
     fastify.get('/shop', {onRequest:[fastify.authenticate]}, async(req, res) => {
@@ -671,13 +668,20 @@ console.log('Iniciando servidor...')
 
     fastify.post('/shops-near-by', {onRequest:[fastify.authenticate]}, async(req, res) => {
 
-        const user_id = req.user.id
-        const {lat, long} = req.body
+        const userId = req.user.id
         const radiusKm = 10
+        
+        const {cep} = await prisma.Address.findFirst({
+            where: {userId, isDefault: true}
+        })
+        
+        const loc = await axios.get(`https://cep.awesomeapi.com.br/json/${cep}`)
+        let lat = Number(loc.data.lat)
+        let lng = Number(loc.data.lng)
 
-        if(!user_id || !lat || !long) return res({message: 'Não foi possível encontrar dados do usuário', error: true})
+        if(!userId || !lat || !lng) return res({message: 'Não foi possível encontrar dados do usuário', error: true})
 
-        const calc = await searchArea(lat, long, radiusKm)
+        const calc = await searchArea(lat, lng, radiusKm)
         if(calc.error) return res.send({message: calc.res})
         const nearShops = await prisma.shop.findMany({
             where: {
@@ -694,13 +698,20 @@ console.log('Iniciando servidor...')
 
         if(!nearShops) return res.send({message: 'Erro ao procurar lojas próximas', error: true})
         
-        const shopsWithDistance = nearShops.map(shop => ({
-            ...shop,
-            distance: calculateDistance(lat, long, shop.latitude, shop.longitude)
-        }));
-        
+        const shopsWithDistance = await Promise.all(
+            nearShops.map(async (shop) => {
+                const distance = await calculateDistance(lat, lng, shop.latitude, shop.longitude)
+                return{
+                    ...shop,
+                    distance: distance.distance,
+                    duration: distance.time,
+                    frete: String(distance.frete).replace('.',',')
+                }
+            })
+        )
+
         shopsWithDistance.sort((a, b) => a.distance - b.distance);
-            
+        
         io.emit('load-near-by', {nearShops: shopsWithDistance})
         return res.send(shopsWithDistance);
     })
@@ -902,22 +913,53 @@ console.log('Iniciando servidor...')
 //MENU - END
 
 
-
 //ORDER - START
+
+    fastify.get('/orders', {onRequest:[fastify.authenticate]}, async (req, res) => {
+
+        const userId = req.user.id
+
+        if(!userId) return res.send({message: 'Usuário não encontrado!', error: true})
+
+        const orders = await prisma.Order.findMany({
+            where: {userId},
+            include: {
+                shop: true, 
+                orderItems: {
+                    include: {
+                        product: true
+                    }
+                }
+            },
+            orderBy: {createdAt: 'desc'}
+        })
+
+        io.emit('new-order-list', {orders})
+        return res.send(orders)
+
+    })
 
     fastify.post('/create-order', {onRequest:[fastify.authenticate]}, async (req, res) => {
         const userId = req.user.id;
         const { shopId, items, total } = req.body;
 
         try {
-            const order = await prisma.order.create({
-                data: {
-                    userId,
-                    shopId: parseInt(shopId),
-                    items: JSON.stringify(items),
-                    total: parseFloat(total),
-                }
-            });
+            const [_, result] = await prisma.$transaction([
+                prisma.order.create({
+                    data: {
+                        userId,
+                        shopId: parseInt(shopId),
+                        items: JSON.stringify(items),
+                        total: parseFloat(total),
+                    }
+                }),
+                prisma.order.findMany({
+                    where: {userId},
+                    where: {orderItems:{userId}}
+                })
+            ])
+        
+            io.emit('new-order-list', {result})
 
             return res.send({ message: 'Pedido criado com sucesso', orderId: order.id, error: false });
         } catch (error) {
@@ -926,6 +968,61 @@ console.log('Iniciando servidor...')
         }
     });
 
+    fastify.patch('/update-order/:id', {onRequest:[fastify.authenticate]}, async (req, res) => {
+
+        const orderId = Number(req.params.id);
+        const updates = req.body.update
+
+        console.log({
+            id: orderId,
+            data: updates
+        })
+        const order = await prisma.Order.findUnique({
+            where: {id: orderId}
+        })
+
+        if(!order) return res.send({message: 'Pedido não encontrado', error: true})
+
+        const [_, result] = await prisma.$transaction([
+            prisma.Order.update({
+                where: {id: orderId},
+                data: updates
+            }),
+            prisma.Order.findUnique({
+                where: {id: orderId},
+                include: {user: true}
+            })
+        ])
+        console.log(result)
+
+        if(result.user.pushToken){
+            let title = '';
+            let body = '';
+            switch (result.status) {
+            case 'preparing':
+                title = 'Pedido em preparo! 🍳';
+                body = 'O restaurante começou a preparar sua janta.';
+                break;
+            case 'shipped':
+                title = 'Saiu para entrega! 🛵';
+                body = 'O entregador já está a caminho do seu endereço.';
+                break;
+            case 'delivered':
+                title = 'Bom apetite! 😋';
+                body = 'Seu pedido foi entregue. Avalie-nos no app!';
+                break;
+            }
+
+            if (title) {
+                await sendPushNotification(result.user.pushToken, title, body, { orderId: result.id });
+            }
+        }
+
+        io.emit('order-updated', (result))
+
+        return res.send({message: 'Pedido atualizado com sucesso!', data: result, error: false})
+    })
+
 //ORDER - END
 
 
@@ -933,13 +1030,76 @@ console.log('Iniciando servidor...')
 
     fastify.post('/create-payment-sheet', {onRequest:[fastify.authenticate]}, async (req, res) => {
         try{
-            const {amount, addressId} = req.body
+            const {data, addressId} = req.body
+
             const userId = req.user.id
 
+            const store = await prisma.Shop.findUnique({
+                where: {ownerId: userId}
+            })
+
+            if(!store) return res.send({message: 'Loja não foi encontrada.', error: true});
+
+            const prods_id = data.map((item) => Number(item.product))
+            const items = await prisma.Product.findMany({where: {id: {in: prods_id}}, select: {price: true, id: true, shopId: true}})
+
+            let totalCentavos = 0;
+
+            const final = data.map((i) => {
+                const prod = items.find((e) => e.id === Number(i.product)); 
+                
+                if (!prod) throw new Error(`Produto ${i.product} não encontrado`);
+
+                const centavos = Math.round(prod.price * 100);
+                const subtotalItem = centavos * i.quantity;
+                
+                totalCentavos += subtotalItem;
+
+                return {
+                    productId: prod.id,
+                    quantity: i.quantity,
+                    price: prod.price                 
+                };
+            });
+
+            const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+
+            const exists = await prisma.Order.findFirst({
+                where: {
+                    userId: userId,
+                    status: 'pending',
+                    createdAt: { gte: thirtyMinutesAgo }
+                },
+                orderBy: {createdAt: 'desc'}
+            })
+
+            if(exists && exists.paymentId){
+
+                if((exists.total * 100) !== totalCentavos){
+                    await stripe.paymentIntents.update(exists.paymentId, {
+                        amount: totalCentavos
+                    })
+
+                    await prisma.Order.update({
+                        where: {id: exists.id},
+                        data: {total: totalCentavos / 100}
+                    })
+                }
+
+                const oldPayment = await stripe.paymentIntents.retrieve(exists.paymentId)
+
+                return res.send({
+                    paymentIntent: oldPayment.client_secret,
+                    customer: oldPayment.customer,
+                    publishableKey: process.env.STRIPE_PUBLISHABLED_KEY,
+                    oldOrder: true,
+                    order: exists
+                })
+            }
+
             const customer = await stripe.customers.create()
-            const total_amount = Math.round(amount * 100)
             const paymentIntent = await stripe.paymentIntents.create({
-                amount: total_amount,
+                amount: totalCentavos,
                 currency: 'brl',
                 customer: customer.id,
                 automatic_payment_methods: {enabled: true},
@@ -947,15 +1107,29 @@ console.log('Iniciando servidor...')
                     addressId: addressId,
                     userId: userId
                 }
+            });
+
+            const saveOrder = await prisma.Order.create({
+                data:{
+                    userId: userId,
+                    shopId: store.id,
+                    total: totalCentavos / 100,
+                    paymentId: paymentIntent.id,
+                    orderItems:{
+                        create: final
+                    }
+                }
             })
+            
+            if(!saveOrder) return res.send({message: 'Erro ao criar PaymentIntent no banco', error: true})
 
             return res.send({
                 paymentIntent: paymentIntent.client_secret,
                 customer: customer,
-                publishableKey: process.env.STRIPE_PUBLISHABLED_KEY
-            })
-        
-        
+                publishableKey: process.env.STRIPE_PUBLISHABLED_KEY,
+                oldOrder: false,
+                order: saveOrder
+            })        
         }
         catch(err){
             console.log(err)
@@ -963,7 +1137,12 @@ console.log('Iniciando servidor...')
         }
     })
 
+    fastify.post('/stripe-webhook', (req, res) => {
 
+        const sig = req.headers['stripe-signature']
+        
+        console.log({dados: req.body, cabecalho_da_request: sig})
+    })
 
 //STRIPE - END
 
@@ -974,12 +1153,10 @@ const start = async () => {
         port: process.env.PORT || 3000, 
         host: '0.0.0.0' 
     });
-    console.log(`Servidor rodando REALMENTE em: ${address}`);
-    console.log('Pronto para receber requisições!');
+    console.log(`Servidor está rodando em: ${address}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
   }
 };
-
 start();
