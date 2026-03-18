@@ -1,5 +1,18 @@
 import axios from "axios";
 
+
+import admin from 'firebase-admin';
+
+const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT 
+  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+  : require('./chegaja-84e0c-firebase-adminsdk-xxxx.json'); 
+
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+}
+
 export  const sendPushNotification = async (expoPushToken, title, body, data = {}) => {
 
     try{
