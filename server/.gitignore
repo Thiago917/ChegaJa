@@ -6,3 +6,5 @@ node_modules
 /frontend/.env
 /frontend/dist
 /frontend/node_modules
+
+chegaja-*-firebase-adminsdk-*.json
