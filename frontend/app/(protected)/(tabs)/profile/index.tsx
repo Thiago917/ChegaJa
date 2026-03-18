@@ -1,4 +1,3 @@
-import { usePhoto } from "@/contexts/PhotoContext";
 import { useUser } from "@/contexts/UserContext";
 import api from "@/services/api";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,7 +13,6 @@ export default function Profile(){
 
     const [loading, setLoading] = useState<boolean>(false)
     const [checked, setChecked] = useState<boolean>(false)
-    const {photo} = usePhoto();
     const {user} = useUser();
 
     useEffect(() => {

@@ -8,6 +8,7 @@ export type Products = {
   name: string
   price: number
   status: boolean
+  quantity?: number;
   photo: string
   category: string
   created_at?: string

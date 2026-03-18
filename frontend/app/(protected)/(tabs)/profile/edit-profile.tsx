@@ -1,4 +1,3 @@
-import { usePhoto } from "@/contexts/PhotoContext";
 import { useUser } from "@/contexts/UserContext";
 import ResetPasswordModal from "@/components/resetPasswordModal";
 import * as ImagePicker from 'expo-image-picker';
@@ -19,13 +18,7 @@ export default function editProfile(){
     const [modal, setModal] = useState<boolean>(false);
     const [txtLoading, setTxtLoading] = useState<boolean>(false);
     const [btnLoading, setBtnLoading] = useState<boolean>(false);
-    const {setUserPhoto,} = usePhoto();
-    const {user, loadUser, setUser} = useUser();    
-
-    useEffect(() => {
-        loadUser();
-    }, [user]);
-
+    const {user, setUser} = useUser();    
 
     const saveProfile = async () => {
         try{
@@ -76,7 +69,7 @@ export default function editProfile(){
                     return Alert.alert('Erro', imageUrl.description)
                 } 
 
-                await setUserPhoto(String(imageUrl.url))
+                await setUser(String(user?.id), {photo: String(imageUrl.url)})
                     
                 const response = await api.post('/profile-photo', {photo_url: imageUrl.url, user_id: user?.id})
                 const res = response.data

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "346124374041",
+    "project_id": "chegaja-84e0c",
+    "storage_bucket": "chegaja-84e0c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:346124374041:android:1e7663c447edf2149f9a88",
+        "android_client_info": {
+          "package_name": "com.thi4g0.chegaJa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDT-60RiE7--n9G7AfsGpesZ_iOM9x1B48"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

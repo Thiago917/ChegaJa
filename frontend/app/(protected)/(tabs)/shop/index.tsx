@@ -1,10 +1,12 @@
 import OrderCard from "@/components/orderCard";
 import ToggleShopStatus from "@/components/toggleShopStatus";
+import { useOrders } from "@/contexts/MyOrdersContext";
 import { useNears } from "@/contexts/nearShopsContext";
 import { useShop } from "@/contexts/ShopContext";
-import { Link, router } from "expo-router";
+import { useUser } from "@/contexts/UserContext";
+import { Link, router, useUnstableGlobalHref } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR;
 
@@ -13,6 +15,8 @@ export default function Shopping() {
   const [loading, setLoading] = useState<boolean>(false);
   const [modalVisible, setModalVisible] = useState<boolean>(false)
   const {shop, setShop} = useShop()
+  const {order} = useOrders()
+  const {user} = useUser()
 
   const handleStatusChange = (status: boolean, id: string) => {
     if (status === shop?.status) return setModalVisible(false);
@@ -46,16 +50,7 @@ export default function Shopping() {
     setShop(id, {status: status});
     setModalVisible(false);
   };
-
-  if(loading){
-    return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color="#000" />
-            <Link href='/login/login'><Text>Carregando...</Text></Link>
-        </View>
-        );
-    }
-    
+      
   return (
     <View style={styles.container}>
       <View style={styles.headerContent}>
@@ -84,7 +79,12 @@ export default function Shopping() {
 
       <View style={styles.ordersSection}>
         <Text style={styles.sectionTitle}>Pedidos de hoje</Text>
-        <OrderCard key={1} id={'1'} cliente={'César'} itens={'1X Marmita G (Churrasco Misto)'} horario={'09:59 AM'} valor={'R$28,00'}/>
+
+        <ScrollView>
+        {order?.map((item) => (
+            <OrderCard key={item.id} id={item.id} cliente={user?.name || ''} itens={item.orderItems} horario={'09:59 AM'} total={item.total} status={item.status}/>
+          ))}
+        </ScrollView>
       </View>
 
     </View>

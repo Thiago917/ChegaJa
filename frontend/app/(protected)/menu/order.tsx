@@ -32,6 +32,8 @@ export default function Order(){
     const deliveryFee = 8.99;
     const total = getCartTotal();
 
+    const currentAddress = (Array.isArray(address) && address.length > 0) ? address.find((item) => item.isDefault === true) : null;
+
     const toggleDefaultAddress = async (id: number) => {
         setLoadingId(id)
         try{    
@@ -45,59 +47,70 @@ export default function Order(){
         }
     }
 
-    const fetchPaymentSheet = async () => {
-        try{
+    const processCheckout = async () => {
+        try {
+            
+            const itemsData = cart.map((item) => ({
+                product: item.item.id,
+                quantity: item.quantity
+            }));
+
             const response = await api.post('/create-payment-sheet', {
-                amount: total,
-                addressId: addressData?.id
-            })
-            if(response.data.error){
-                console.log('Error : ',response.data.message)
-                return;
+                data: itemsData,
+                addressId: currentAddress?.id
+            });
+
+            if (response.data.error) {
+                Alert.alert('Erro', response.data.message);
+                return null;
             }
-            return response.data
+
+            const { paymentIntent, customer } = response.data;
+
+            const { error: initError } = await initPaymentSheet({
+                merchantDisplayName: 'ChegaJá App',
+                customerId: customer.id, 
+                paymentIntentClientSecret: paymentIntent,
+                defaultBillingDetails: { name: user?.name },
+                allowsDelayedPaymentMethods: true,
+            });
+
+            if (initError) {
+                Alert.alert('Erro', initError.message);
+                return null;
+            }
+
+            return true; 
+        } catch (err) {
+            console.log('Erro no processamento | ', err);
+            return null;
         }
-        catch(err){
-            console.log('Erro no fetchPaymentSheet | ',err)
-        }
-    }
+    };
 
-    const initializePaymentSheet = async () => {
+    const handleCheckout = async () => {
 
-        const data = await fetchPaymentSheet()
-        if(!data || data.error) return Alert.alert('Erro', 'Não foi possível preparar o pagamento');
+        if(!currentAddress) return Alert.alert('Aviso', 'Selecione um endereço de entrega antes');
 
-        const {paymentIntent, customer} = await fetchPaymentSheet()
+        setLoading(true)
 
-        const {error} = await initPaymentSheet({
-            merchantDisplayName: 'ChegaJá App',
-            customerId: customer.id,
-            paymentIntentClientSecret: paymentIntent,
-            defaultBillingDetails: {name: user?.name},
-            allowsDelayedPaymentMethods: false,
-        })
+        const isReady = await processCheckout()
+    
+        if(isReady){
+            const {error: presentError} = await presentPaymentSheet();
 
-    }
-
-    const openPaymentSheet = async () => {
-        const { error } = await presentPaymentSheet()
-
-        if(error){
-            Alert.alert(`Erro no pagamento: ${error.code}`, error.message)
-        }
-        else{
-            Alert.alert('🚀 Sucesso!', 'Seu pedido foi pago e processado.')
-            setTimeout(() => {
+            if(presentError){
+                console.log('Pagamento não concluído: ', presentError.message)
+                setLoading(false)
+            }
+            else{
+                Alert.alert('Sucesso', 'Pedido realizado com sucesso!')
+                setLoading(false)
                 clearCart()
-                return router.push('/home')
-            }, 700)
+                return router.replace('/home')   
+            }
         }
     }
 
-    useEffect(() => {
-        initializePaymentSheet();
-    }, [])
- 
     return(
         <View style={styles.container}>
             <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'android' ? 'height' : 'padding'}>
@@ -327,7 +340,7 @@ export default function Order(){
                                     }, 400);
                                 }
                                 else if(step === 3){
-                                    openPaymentSheet()
+                                    handleCheckout()
                                 }
                             }}
                             

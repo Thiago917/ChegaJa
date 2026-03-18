@@ -7,6 +7,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { UserProvider } from "@/contexts/UserContext";
 import { AddressProvider } from "@/contexts/AddressContext";
 import { StripeProvider } from '@stripe/stripe-react-native'
+import { Screen } from "expo-router/build/views/Screen";
 
 
 
@@ -41,7 +42,9 @@ export default function ProtectedLayout(){
                 <AddressProvider>
                     <StripeProvider publishableKey={`${process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLED_KEY}`} merchantIdentifier="merchant.com.chegaja">
                         <StatusBar style="dark" />
-                        <Stack screenOptions={{headerShown: false}}/>
+                        <Stack screenOptions={{headerShown: false}}>
+                            <Screen name='address/address'/>
+                        </Stack>
                     </StripeProvider>
                 </AddressProvider>
             </UserProvider>

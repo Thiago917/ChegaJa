@@ -4,7 +4,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-export function CartItems({ cart, updateQuantity, visible, onClose }: { cart: { id: string; item: any; quantity: number }[]; updateQuantity: (item: any, delta: number) => void; visible: boolean; onClose: () => void }) {
+export function CartItems({ cart, updateQuantity, clearItemCart, visible, onClose }: { cart: { id: string; item: any; quantity: number }[]; updateQuantity: (item: any, delta: number) => void; clearItemCart: (item: any) => void; visible: boolean; onClose: () => void }) {
 
     const MAIN_COLOR  = process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c';
     const [loading, setLoading] = useState<boolean>(false);
@@ -30,38 +30,35 @@ export function CartItems({ cart, updateQuantity, visible, onClose }: { cart: { 
                 <>
                     {cart.map((cartItem) => (
                     <View key={cartItem.id} style={styles.modalCartItem}>
-                        <Image 
-                        source={{ uri: cartItem.item.photo }} 
-                        style={styles.modalCartItemImage}
-                        />
+                        <Image source={{ uri: cartItem.item.photo }} style={styles.modalCartItemImage}/>
                         <View style={styles.modalCartItemInfo}>
-                        <Text style={styles.modalCartItemName}>{cartItem.item.name}</Text>
-                        <Text style={styles.modalCartItemPrice}>
-                            R$ {String(cartItem.item.price.toFixed(2)).replace('.', ',')}
-                        </Text>
-                        <View style={styles.modalQuantityControl}>
-                            <TouchableOpacity style={styles.modalQtyBtn} onPress={() => updateQuantity(cartItem.item, -1)}>
-                            <Ionicons name="remove" size={18} color="#FFF" />
+                          <Text style={styles.modalCartItemName}>{cartItem.item.name}</Text>
+                          <Text style={styles.modalCartItemPrice}>R$ {String(cartItem.item.price.toFixed(2)).replace('.', ',')}</Text>
+                          <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '120%'}}>
+                            <View style={styles.modalQuantityControl}>
+                              <TouchableOpacity style={styles.modalQtyBtn} onPress={() => updateQuantity(cartItem.item, -1)}>
+                              <Ionicons name="remove" size={18} color="#FFF" />
+                              </TouchableOpacity>
+                              <Text style={styles.modalQtyText}>{cartItem.quantity}</Text>
+                              <TouchableOpacity style={styles.modalQtyBtn} onPress={() => updateQuantity(cartItem.item, 1)}>
+                              <Ionicons name="add" size={18} color="#FFF" />
+                              </TouchableOpacity>
+                            </View>
+                            <TouchableOpacity onPress={() =>clearItemCart(cartItem.item)} disabled={cartItem.quantity > 1 ? true : false}>
+                              <Ionicons name='trash-bin' color={cartItem.quantity === 1 ? '#e74c3c' : '#e27a6e' } size={20} />
                             </TouchableOpacity>
-                            <Text style={styles.modalQtyText}>{cartItem.quantity}</Text>
-                            <TouchableOpacity style={styles.modalQtyBtn} onPress={() => updateQuantity(cartItem.item, 1)}>
-                            <Ionicons name="add" size={18} color="#FFF" />
-                            </TouchableOpacity>
+                          </View>
                         </View>
-                        </View>
-                        <Text style={styles.modalCartItemTotal}>
-                        R$ {String((cartItem.item.price * cartItem.quantity).toFixed(2)).replace('.', ',')}
-                        </Text>
+                        <Text style={styles.modalCartItemTotal}>R$ {String((cartItem.item.price * cartItem.quantity).toFixed(2)).replace('.', ',')}</Text>
                     </View>
                     ))}
-
                     <View style={styles.modalDivider} />
 
                     <View style={styles.modalSummary}>
                     <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>Subtotal:</Text>
                         <Text style={styles.summaryValue}>
-                        R$ {String(cart.reduce((sum, item) => sum + (item.item.price * item.quantity), 0).toFixed(2)).replace('.', ',')}
+                          R$ {String(cart.reduce((sum, item) => sum + (item.item.price * item.quantity), 0).toFixed(2)).replace('.', ',')}
                         </Text>
                     </View>
                     <View style={styles.summaryRow}>
@@ -76,7 +73,7 @@ export function CartItems({ cart, updateQuantity, visible, onClose }: { cart: { 
                     </View>
                     </View>
 
-                    <TouchableOpacity style={[styles.checkoutBtn, { backgroundColor: MAIN_COLOR }]} onPress={() => {
+                    <TouchableOpacity style={[styles.checkoutBtn, { backgroundColor: MAIN_COLOR }]} disabled={loading} onPress={() => {
                         setLoading(true);
                         setTimeout(() => {
                             setLoading(false);

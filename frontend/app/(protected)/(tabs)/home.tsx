@@ -11,6 +11,7 @@ import AddressLocation from "@/components/addressLocation";
 import { useUser } from "@/contexts/UserContext";
 import SubCartItems from "@/components/subCartItems";
 import { useAddress } from "@/contexts/AddressContext";
+import * as Notifications from 'expo-notifications';
 
 const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR;
 
@@ -24,9 +25,9 @@ export default function Home() {
     const [addressModal, setAddressModal] = useState<boolean>(false)
     const [subCartItemsVisible, setSubCartItemsVisible] = useState<boolean>(false)
     
-    const { user } = useUser();
+    const { user, setUser } = useUser();
     const { stores, loadNearShop} = useNears()
-    const { cart, getCartItemsCount, updateQuantity } = useCart();
+    const { cart, getCartItemsCount, updateQuantity, clearItemCart } = useCart();
     const { address } = useAddress();
 
     const currentAddress = (Array.isArray(address) && address.length > 0) ? address.find((item) => item.isDefault === true) : null;
@@ -36,7 +37,8 @@ export default function Home() {
             loadNearShop()
             checkBiometry();
             checkCartItems();
-        }, [cart])
+            registerToken();
+        }, [])
     )
 
     const onRefresh = useCallback(async () => {
@@ -63,12 +65,44 @@ export default function Home() {
         cart.length > 0 ? setSubCartItemsVisible(true) : setSubCartItemsVisible(false);
     }
 
+    const checkNotifications = async () => {
+        const {status: existingStatus} = await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus
+
+        if(existingStatus !== 'granted'){
+            const {status} = await Notifications.requestPermissionsAsync();
+            finalStatus = status;
+        }
+
+        if(finalStatus !== 'granted'){
+            Alert.alert('Erro', 'Falha ao obter permissão para notificações!');
+            return;
+        }
+
+        const token = (await Notifications.getExpoPushTokenAsync()).data;
+        console.log('token gerado com sucesso! ', token)
+        return token;
+    }
+
+    const registerToken = async () => {
+        try{
+            const token = await checkNotifications();
+
+            const response = await setUser(Number(user?.id), {pushToken: token})
+            return response;
+
+        }
+        catch(err){
+            console.log('Erro ao registrar PushToken do usuário: ', err)
+        }
+    }
+
     return (
         <View style={styles.container}>
             {/* 1. Header com Localização */}
             <View style={styles.header}>
                 <View>
-                    <TouchableOpacity onPress={() => setAddressModal(true)}>
+                    <TouchableOpacity onPress={() => router.push('/address/address')}>
                         <Text style={styles.locationLabel}>Entregar em</Text>
                         <View style={styles.locationRow}>
                             <Ionicons name="location" size={16} color={MAIN_COLOR} />
@@ -89,7 +123,7 @@ export default function Home() {
                     <TouchableOpacity onPress={() => router.push('/profile')}>
                         <Image 
                             style={styles.userAvatar} 
-                            source={user?.photo ? { uri: user?.photo } : { uri: 'https://via.placeholder.com/150' }} 
+                            source={user?.photo} 
                             contentFit="cover"
                         />
                     </TouchableOpacity>
@@ -125,12 +159,12 @@ export default function Home() {
                                 pathname: `../menu/${item.id}`,
                                 params: { distance: String(item.distance) }
                             })
-                        }}  
-                    >
+                        }}>
                         
                         <Image source={ item.photo ? { uri: item.photo } : {}} style={styles.shopLogo} contentFit="cover" />
                         
                         <View style={styles.shopInfo}>
+                            
                             <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
                                 <Text style={styles.shopName} numberOfLines={1}>{item.name}</Text>
                                 <Text style={{color: item.status ? '#2E7D32' : '#C62828', fontWeight: 'bold', marginRight: 20}}> {item.status ? 'Aberto' : 'Fechado'}</Text>
@@ -142,13 +176,14 @@ export default function Home() {
                                 <Text style={styles.dot}>•</Text>
                                 <Text style={styles.categoryText}>{item.branch || ''}</Text>
                                 <Text style={styles.dot}>•</Text>
-                                <Text style={styles.distanceText}>{item.distance ? `${item.distance.toFixed(1)} km` : '-- km'}</Text>
+                                {/* <Text style={styles.distanceText}>{item.distance ? `${item.distance.toFixed(1)} km` : '-- km'}</Text> */}
+                                <Text style={styles.distanceText}>{item.distance}</Text>
                             </View>
 
                             <View style={styles.deliveryRow}>
-                                <Text style={styles.deliveryTime}>25-35 min</Text>
+                                <Text style={styles.deliveryTime}>{item.duration} - min</Text>
                                 <Text style={styles.dot}>•</Text>
-                                <Text style={styles.deliveryPrice}>Frete R$ 5,00</Text>
+                                <Text style={styles.deliveryPrice}>Frete R$ {item.frete}</Text>
                             </View>
                         </View>
                         
@@ -156,7 +191,8 @@ export default function Home() {
                     </TouchableOpacity>
                 )}
             />
-            <CartItems cart={cart} updateQuantity={updateQuantity} visible={visible} onClose={() => setVisible(false)} />
+
+            <CartItems cart={cart} updateQuantity={updateQuantity} clearItemCart={clearItemCart} visible={visible} onClose={() => setVisible(false)} />
             <SubCartItems cart={cart} visible={subCartItemsVisible}/>
                 
             <AddressLocation visible={addressModal} onClose={() => setAddressModal(false)} address={currentAddress || null} userId={Number(user?.id)} />

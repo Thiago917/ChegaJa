@@ -10,7 +10,7 @@ const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c';
 export default function SubCartItems({ cart, visible}: { cart: any[]; visible: boolean}) {
     
     const [cartVisible, setCartVisible] = useState<boolean>(false)
-    const { updateQuantity } = useCart()
+    const { updateQuantity, clearItemCart } = useCart()
     const router = useRouter();
 
     if (!visible || cart.length === 0) return null;
@@ -44,7 +44,7 @@ export default function SubCartItems({ cart, visible}: { cart: any[]; visible: b
                     <Ionicons name="cart-outline" size={20} color="#FFF" />
                 </View>
             </TouchableOpacity>
-            <CartItems cart={cart} updateQuantity={updateQuantity} visible={cartVisible} onClose={() => setCartVisible(false)} />
+            <CartItems cart={cart} updateQuantity={updateQuantity} clearItemCart={clearItemCart} visible={cartVisible} onClose={() => setCartVisible(false)} />
         </View>
     );
 }

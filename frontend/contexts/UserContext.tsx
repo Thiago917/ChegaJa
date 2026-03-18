@@ -3,16 +3,17 @@ import socket from "@/services/socket";
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
 type User = {
-    id: string;
+    id: number;
     name: string;
     mail: string;
     photo: string;
+    pushToken: string;
 };
 
 type UserContextType = {
     user: User | null;
     loadUser: () => Promise<void>;
-    setUser: (id: string, updates: Partial<User>) => Promise<void>;
+    setUser: (id: number, updates: Partial<User>) => Promise<void>;
     };
 
 const UserContext = createContext<UserContextType>({} as UserContextType);
@@ -34,6 +35,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                     name: res.name,
                     mail: res.email,
                     photo: res.photo,
+                    pushToken: res.pushToken
                 });
             }
         } catch (err: any) {
@@ -42,16 +44,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    const setUser = async (id: string, updates: Partial<User>) => {
+    const setUser = async (id: number, updates: Partial<User>) => {
         if(!user) return;
         const prev = user;
 
         try{
             // Mapear os campos para o que o server espera
-            const body: any = {};
-            if(updates.name) body.name = updates.name;
-            if(updates.mail) body.mail = updates.mail;            
-            const response = await api.patch(`/update-me/${id}`, body)
+            const response = await api.patch(`/update-user/${id}`, {updates})
             const res = response.data
 
             if(res.error){

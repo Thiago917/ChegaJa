@@ -13,6 +13,7 @@ type CartContextType = {
   cart: CartItem[];
   removeFromCart: (productId: number) => void;
   updateQuantity: (product: Products, delta: number) => void;
+  clearItemCart: (product: Products) => void;
   clearCart: () => void;
   getCartTotal: () => number;
   getCartItemsCount: () => number;
@@ -31,20 +32,13 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const updateQuantity = (product: Products, delta: number) => {
     setCart(prev => {
 
-      if(prev.length === 0){
-        Alert.alert('Produto adicionado ao carrinho!', 'Deseja finalizar sua compra?', [
-          {text: 'Continuar comprando'},
-          {text: 'Sim!', onPress: () => {return router.push('/menu/order')}}
-        ])
-      }
-
       const findCartItem = prev.find(item => item.item.id === product.id);
 
       if (findCartItem) {
         const newQuantity = findCartItem.quantity + delta;
 
         if (newQuantity <= 0) {
-          return prev.filter(item => item.item.id !== product.id);
+          return prev.map(item => item.item.id === product.id ? {...item, ...prev} : item);
         }
 
         return prev.map(item =>
@@ -78,6 +72,13 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setCart([]);
   };
 
+  const clearItemCart = (product: Products) => {
+    setCart((prev) => {
+      if (!prev) return [];
+        return prev.filter(item => Number(item.item.id) !== Number(product.id));
+    });
+  }
+
   const getCartItemsCount = () => {
     return cart.length;
   };
@@ -97,6 +98,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         removeFromCart,
         updateQuantity,
         clearCart,
+        clearItemCart,
         getCartTotal,
         getCartItemsCount,
         getCartSubtotal,

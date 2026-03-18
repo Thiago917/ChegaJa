@@ -15,7 +15,7 @@ export default function MenuScreen() {
   const [loading, setLoading] = useState(true);
   const [cartModalVisible, setCartModalVisible] = useState(false);
   const [subCartItemsVisible, setSubCartItemsVisible] = useState(false);
-  const { cart, updateQuantity, getCartItemsCount } = useCart();
+  const { cart, updateQuantity, getCartItemsCount, clearItemCart } = useCart();
   const distanceFormatted = distance ? `${parseFloat(distance as string).toFixed(1)} km` : '-- km';
   
   const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c';
@@ -141,7 +141,7 @@ export default function MenuScreen() {
         ))}
 
       </ScrollView>
-      <CartItems cart={cart} updateQuantity={updateQuantity} visible={cartModalVisible} onClose={() => setCartModalVisible(false)} />
+      <CartItems cart={cart} updateQuantity={updateQuantity} clearItemCart={clearItemCart} visible={cartModalVisible} onClose={() => setCartModalVisible(false)} />
       <SubCartItems cart={cart} visible={subCartItemsVisible}/>
 
 

@@ -10,7 +10,9 @@ type Shops = {
     branch: string;
     category: string;
     photo: string;
-    distance: number;
+    distance: string;
+    duration: string;
+    frete: number;
     assessment: number;   
 }
 
@@ -48,10 +50,9 @@ export const NearShopsProvider = ({children} : {children: React.ReactNode}) => {
                 long: locate.longitude
             })
             const res = response.data
-
             if(res.error) return res.message;
 
-            setStoresState(res)
+            setStoresState(res || [])
         }   
         catch(err){
             console.log(`Erro ao carregar informações de "Shops near by" | ${err}`)
