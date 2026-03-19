@@ -20,7 +20,6 @@ export  const sendPushNotification = async (expoPushToken, title, body, data = {
         }})
 
         const res = response.data
-        console.log('notificação enviada: ', res)
     }
     catch(err){
         console.log('Erro ao enviar notificações: ',err)

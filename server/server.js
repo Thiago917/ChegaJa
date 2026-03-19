@@ -684,14 +684,30 @@ const validaToken = async (token) => {
         const user_id = req.user.id
 
         const shop = await prisma.Shop.findUnique({
-            where: {ownerId: user_id}
+            where: { ownerId: user_id },
+            include: { Order: { where: { status: { not: 'cancelled' } } } }
         }) 
 
         if(!shop) return res.send({message: 'Não foi possível encontrar a loja', error: true})
 
+        const charges = await stripe.charges.list({limit: 100})
 
+        let total = 0;
+        charges.data.forEach((item) => {
+            shop.Order.forEach((order) => {
+                if(item.paid && item.status === 'succeeded' && item.metadata.orderId === String(order.id) && item.refunded === false){
+                    total += item.amount
+                }
+            })
+        });
 
-        return res.send(shop)
+        const store = {
+            ...shop,
+            founding: (total / 100).toFixed(2),
+            orders: shop.Order.length
+        }
+
+        return res.send(store)
         
     })
 
@@ -1094,7 +1110,7 @@ const validaToken = async (token) => {
 
     fastify.post('/create-payment-sheet', {onRequest:[fastify.authenticate]}, async (req, res) => {
         try{
-            const {data, addressId} = req.body
+            const {data} = req.body
 
             const userId = req.user.id
 
@@ -1168,11 +1184,11 @@ const validaToken = async (token) => {
                 customer: customer.id,
                 automatic_payment_methods: {enabled: true},
                 metadata:{
-                    addressId: addressId,
-                    userId: userId
+                    userId: userId,
+                    shopId: store.id 
                 }
             });
-
+            
             const saveOrder = await prisma.Order.create({
                 data:{
                     userId: userId,
@@ -1184,8 +1200,12 @@ const validaToken = async (token) => {
                     }
                 }
             })
-            
+
             if(!saveOrder) return res.send({message: 'Erro ao criar PaymentIntent no banco', error: true})
+
+            await stripe.paymentIntents.update(paymentIntent.id, {
+                metadata: {orderId: saveOrder.id}
+            })
 
             return res.send({
                 paymentIntent: paymentIntent.client_secret,
