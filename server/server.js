@@ -153,7 +153,7 @@ const getGeolocation = async (cep) => {
     
     }
     catch(err){
-        console.log('Erro ao buscar coordenadas do usuário', error_message);
+        console.log('Erro ao buscar coordenadas do usuário', err);
         throw err
     }
 }
