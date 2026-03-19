@@ -143,12 +143,13 @@ const getGeolocation = async (cep) => {
         });
 
         const data = response.data
+
         if(data.status === 'OK'){
             const {lat, lng} = data.results[0].geometry.location; 
             return {lat, lng}
         }
         else{
-            throw new Error("Erro na api de geolocalização");
+            throw new Error(`Google Maps API Status: ${response.data.status} - ${response.data.error_message || ''}`);
         }
     
     }
@@ -702,6 +703,8 @@ const validaToken = async (token) => {
         const {cep} = await prisma.Address.findFirst({
             where: {userId, isDefault: true}
         })
+
+        console.log(process.env.GOOGLE_MAPS_API_MATRIX_SECKEY)
     
         const {lat, lng} = await getGeolocation(cep)
 
