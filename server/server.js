@@ -704,8 +704,6 @@ const validaToken = async (token) => {
             where: {userId, isDefault: true}
         })
 
-        console.log(process.env.GOOGLE_MAPS_API_MATRIX_SECKEY)
-    
         const {lat, lng} = await getGeolocation(cep)
 
         if(!userId || !lat || !lng) return res({message: 'Não foi possível encontrar dados do usuário', error: true})
@@ -1046,6 +1044,48 @@ const validaToken = async (token) => {
 
         return res.send({message: 'Pedido atualizado com sucesso!', data: result, error: false})
     })
+
+    fastify.patch('/cancel-order/:id', { onRequest: [fastify.authenticate] }, async (req, res) => {
+        const userId = req.user.id;
+        const order_id = req.params.id;
+
+        try {
+            const order = await prisma.order.findUnique({
+                where: { id: order_id }
+            });
+
+            if (!order) return res.send({ message: 'Pedido não encontrado', error: true });
+            
+            const refund = await stripe.refunds.create({
+                payment_intent: order.paymentId, 
+                reason: 'requested_by_customer'
+            });
+
+            if (!refund) throw new Error('Falha no processamento do Stripe');
+
+            const [_, result] = await prisma.$transaction([
+                prisma.order.update({ 
+                    where: { id: order_id },
+                    data: {status: 'cancelled'}
+                }),
+                prisma.order.findMany({
+                    where: { userId: userId },
+                    include: { orderItems: true } 
+                })
+            ]);
+
+            io.emit('new-order-list', result);
+
+            return res.send({ message: 'Pedido cancelado e valor estornado!', error: false });
+
+        } catch (err) {
+            console.error("Erro no cancelamento:", err);
+            return res.status(500).send({ 
+                message: 'Erro ao processar cancelamento. O estorno pode ter falhado.', 
+                error: true 
+            });
+        }
+    });
 
 //ORDER - END
 
