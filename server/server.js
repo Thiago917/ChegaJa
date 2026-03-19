@@ -130,6 +130,34 @@ const calculateDistance = async (lat1, long1, lat2, long2) => {
     // return Math.round(distance * 100) / 100 // Retorna com 2 casas decimais
 }
 
+const getGeolocation = async (cep) => {
+
+    try{
+
+        const response = await axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
+            params: {
+                address: cep,
+                key: process.env.GOOGLE_MAPS_API_MATRIX_SECKEY,
+                region: 'br'
+            }
+        });
+
+        const data = response.data
+        if(data.status === 'OK'){
+            const {lat, lng} = data.results[0].geometry.location; 
+            return {lat, lng}
+        }
+        else{
+            throw new Error("Erro na api de geolocalização");
+        }
+    
+    }
+    catch(err){
+        console.log('Erro ao buscar coordenadas do usuário', error_message);
+        throw err
+    }
+}
+
 const resetEmailCode = new Map();
 
 const validaToken = async (token) => {
@@ -674,10 +702,8 @@ const validaToken = async (token) => {
         const {cep} = await prisma.Address.findFirst({
             where: {userId, isDefault: true}
         })
-        
-        const loc = await axios.get(`https://cep.awesomeapi.com.br/json/${cep}`)
-        let lat = Number(loc.data.lat)
-        let lng = Number(loc.data.lng)
+    
+        const {lat, lng} = await getGeolocation(cep)
 
         if(!userId || !lat || !lng) return res({message: 'Não foi possível encontrar dados do usuário', error: true})
 
@@ -973,10 +999,6 @@ const validaToken = async (token) => {
         const orderId = Number(req.params.id);
         const updates = req.body.update
 
-        console.log({
-            id: orderId,
-            data: updates
-        })
         const order = await prisma.Order.findUnique({
             where: {id: orderId}
         })
@@ -993,7 +1015,6 @@ const validaToken = async (token) => {
                 include: {user: true}
             })
         ])
-        console.log(result)
 
         if(result.user.pushToken){
             let title = '';
