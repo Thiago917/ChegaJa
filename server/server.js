@@ -1047,7 +1047,7 @@ const validaToken = async (token) => {
 
     fastify.patch('/cancel-order/:id', { onRequest: [fastify.authenticate] }, async (req, res) => {
         const userId = req.user.id;
-        const order_id = req.params.id;
+        const order_id = Number(req.params.id);
 
         try {
             const order = await prisma.order.findUnique({
