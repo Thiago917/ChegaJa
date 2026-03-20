@@ -1061,8 +1061,8 @@ const validaToken = async (token) => {
             let body = '';
             switch (result.status) {
             case 'preparing':
-                title = 'Pedido em preparo! 🍳';
-                body = 'O restaurante começou a preparar sua janta.';
+                title = 'Pedido em preparo! 🥗';
+                body = 'O restaurante começou a preparar seu pedido.';
                 break;
             case 'shipped':
                 title = 'Saiu para entrega! 🛵';
@@ -1108,9 +1108,18 @@ const validaToken = async (token) => {
                     data: {status: 'cancelled'}
                 }),
                 prisma.order.findMany({
-                    where: { userId: userId },
-                    include: { orderItems: true } 
+                    where: {userId},
+                        include: {
+                            shop: true, 
+                            orderItems: {
+                                include: {
+                                    product: true
+                                }
+                            }
+                        },
+                        orderBy: {createdAt: 'desc'} 
                 })
+                
             ]);
 
             io.emit('new-order-list', result);
