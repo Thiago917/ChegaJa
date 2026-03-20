@@ -197,8 +197,9 @@ const validaToken = async (token) => {
             email: user.email,
             id: user.id,
             photo: user.photo,
+            pushToken: user.pushToken,
             address: address,
-            addresses: addresses
+            addresses: addresses,
         };
     })
 
@@ -1114,6 +1115,10 @@ const validaToken = async (token) => {
 
             const userId = req.user.id
 
+            const user = await prisma.User.findUnique({
+                where: {id: userId}
+            })
+
             const store = await prisma.Shop.findUnique({
                 where: {ownerId: userId}
             })
@@ -1229,6 +1234,19 @@ const validaToken = async (token) => {
     })
 
 //STRIPE - END
+
+
+//PUSH NOTIFICATION - START
+
+    fastify.post('/send-notify', async (req, res) => {
+
+        const {title, body, token} = req.body
+        await sendPushNotification(token, title, body)
+
+    })  
+
+//PUSH NOTIFICATION - END
+
 
 
 const start = async () => {
