@@ -13,11 +13,33 @@ import { Server } from 'socket.io';
 import Stripe from 'stripe';
 import axios from 'axios';
 import { sendPushNotification } from './services/sendNotify.js';
+import fastifyRawBody from 'fastify-raw-body';
 
 const fastify = Fastify({logger: true})
 await fastify.register(cors);
 await fastify.register(jwtPlugin)
 await fastify.register(authPlugin)
+await fastify.register(fastifyRawBody, {
+    field: 'rawBody',
+    global: false,
+    encoding: 'utf8'
+})
+
+fastify.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, body, done) => {
+  // Se for a rota do webhook, passamos o buffer adiante sem mexer
+  if (req.url === '/stripe-webhook') {
+    done(null, body);
+  } else {
+    // Para as outras rotas, convertemos para JSON normalmente
+    try {
+      const json = JSON.parse(body.toString());
+      done(null, json);
+    } catch (err) {
+      err.statusCode = 400;
+      done(err, undefined);
+    }
+  }
+});
 
 await fastify.register(rateLimit, {
     max: 100,
@@ -1226,11 +1248,33 @@ const validaToken = async (token) => {
         }
     })
 
-    fastify.post('/stripe-webhook', (req, res) => {
+    fastify.post('/stripe-webhook', async (req, res) => {
 
         const sig = req.headers['stripe-signature']
-        
-        console.log({dados: req.body, cabecalho_da_request: sig})
+        const whsec = process.env.STRIPE_WEBHOOK_SECRET_KEY
+
+        let event
+
+        try{
+            event = stripe.webhooks.constructEvent(req.body, sig, whsec)
+        }
+        catch(err){
+            console.log('Erro ao verificar assinatura do webhook do stripe: ', err)
+            return res.send({message: 'Assinatura incompatível do webhook do stripe', error: true})
+        }
+
+        switch(event.type){
+            case 'payment_intent.succeeded':
+                const paymentId = event.data.object.id
+                await prisma.Order.update({
+                    where: {paymentId},
+                    data: {status: 'paid'}
+                })
+                break
+        }
+
+        res.send({ received: true })
+
     })
 
 //STRIPE - END
