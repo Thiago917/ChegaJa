@@ -1,13 +1,21 @@
+import { useCart } from "@/contexts/CartContext";
+import { useNears } from "@/contexts/nearShopsContext";
+import { useShop } from "@/contexts/ShopContext";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-export function CartItems({ cart, updateQuantity, clearItemCart, visible, onClose }: { cart: { id: string; item: any; quantity: number }[]; updateQuantity: (item: any, delta: number) => void; clearItemCart: (item: any) => void; visible: boolean; onClose: () => void }) {
+export function CartItems({ cart, updateQuantity, clearItemCart, visible, onClose }: { cart: { id: string; item: any; quantity: number }[]; updateQuantity: (item: any, delta: number) => void; clearItemCart: (item: any) => void; visible: boolean; onClose: () => void}) {
 
     const MAIN_COLOR  = process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c';
     const [loading, setLoading] = useState<boolean>(false);
+    const {currentShop} = useCart()
+    
+    const shop = currentShop()
+
+    const valueFrete = Number(String(shop?.frete).split(',')[0]).toFixed(2) || 0.00
 
     return(
         <Modal
@@ -63,12 +71,12 @@ export function CartItems({ cart, updateQuantity, clearItemCart, visible, onClos
                     </View>
                     <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>Entrega:</Text>
-                        <Text style={styles.summaryValue}>R$ 8,99</Text>
+                        <Text style={styles.summaryValue}>R$ {shop?.frete}</Text>
                     </View>
                     <View style={[styles.summaryRow, { borderTopWidth: 1, borderTopColor: '#DDD', paddingTop: 12, marginTop: 12 }]}>
                         <Text style={styles.summaryLabelTotal}>Total:</Text>
                         <Text style={styles.summaryValueTotal}>
-                        R$ {String((cart.reduce((sum, item) => sum + (item.item.price * item.quantity), 0) + 8.99).toFixed(2)).replace('.', ',')}
+                        R$ {String((cart.reduce((sum, item) => sum + (item.item.price * item.quantity), 0) + Number(valueFrete)).toFixed(2)).replace('.', ',')}
                         </Text>
                     </View>
                     </View>

@@ -49,7 +49,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const prev = user;
 
         try{
-            // Mapear os campos para o que o server espera
             const response = await api.patch(`/update-user/${id}`, {updates})
             const res = response.data
 
@@ -58,7 +57,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                 console.log(res.message)
                 return;
             }
-
             setUserState(prev => prev? ({...prev, ...updates}) : prev)
         }
         catch(err){
@@ -66,7 +64,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             console.error(`Erro ao atualizar dados do usuário: ${err}`);
         }
 
-        // setUserState(prev => prev? ({ ...prev!, ...updates }) : prev);
     };
 
     useEffect(() => {

@@ -11,7 +11,7 @@ export type OrderItemsType = {
     product: Products
 }
 
-type OrderType = {
+export type OrderType = {
     id: number;
     total: number;
     status: string;   

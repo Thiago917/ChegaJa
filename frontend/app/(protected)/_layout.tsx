@@ -8,6 +8,7 @@ import { UserProvider } from "@/contexts/UserContext";
 import { AddressProvider } from "@/contexts/AddressContext";
 import { StripeProvider } from '@stripe/stripe-react-native'
 import { Screen } from "expo-router/build/views/Screen";
+import { MyOrdersProvider } from "@/contexts/MyOrdersContext";
 
 
 
@@ -38,16 +39,16 @@ export default function ProtectedLayout(){
 
     return(
         <CartProvider>
-            <UserProvider>
-                <AddressProvider>
-                    <StripeProvider publishableKey={`${process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLED_KEY}`} merchantIdentifier="merchant.com.chegaja">
+            <AddressProvider>
+                <StripeProvider publishableKey={`${process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLED_KEY}`} merchantIdentifier="merchant.com.chegaja">
+                    <MyOrdersProvider>
                         <StatusBar style="dark" />
                         <Stack screenOptions={{headerShown: false}}>
                             <Screen name='address/address'/>
                         </Stack>
-                    </StripeProvider>
-                </AddressProvider>
-            </UserProvider>
+                    </MyOrdersProvider>
+                </StripeProvider>
+            </AddressProvider>
         </CartProvider>
     )
 }

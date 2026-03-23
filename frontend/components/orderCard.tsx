@@ -24,7 +24,7 @@ export default function OrderCard({ id, cliente, itens, horario, total, status }
     let label = '';
     setLoading(true)
 
-    if (status === 'pending') { nextStatus = 'preparing'; label = 'Preparar'; }
+    if (status === 'paid') { nextStatus = 'preparing'; label = 'Preparar'; }
     else if (status === 'preparing') { nextStatus = 'shipped'; label = 'Enviar para Entrega'; }
     else if (status === 'shipped') { nextStatus = 'delivered'; label = 'Finalizar'; }
 
@@ -41,9 +41,10 @@ export default function OrderCard({ id, cliente, itens, horario, total, status }
 
   const getStatusInfo = (status: string) => {
     switch (status) {
-      case 'pending': return { label: 'Pendente', color: '#f39c12', next: 'Preparar' };
+      case 'paid': return { label: 'Pendente', color: '#f39c12', next: 'Preparar' };
       case 'preparing': return { label: 'Em preparo', color: '#3498db', next: 'Despachar' };
       case 'shipped': return { label: 'Em rota', color: '#9b59b6', next: 'Concluir' };
+      case 'cancelled': return {label: 'Cancelado', color: '#ea1d2c', next: null}
       default: return { label: 'Entregue', color: '#2ecc71', next: null };
     }
   };

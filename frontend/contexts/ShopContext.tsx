@@ -8,6 +8,9 @@ export type Shop={
     branch: string;
     cep: string;
     photo: string;
+    frete: number;
+    orders: number;
+    founding: number;
 }
 
 type ShopContextType = {

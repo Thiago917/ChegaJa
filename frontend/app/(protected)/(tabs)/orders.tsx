@@ -1,12 +1,14 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, Alert, ActivityIndicator } from "react-native";
 import { useOrders } from '@/contexts/MyOrdersContext';
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState, useCallback } from "react";
 import { Image } from "expo-image";
+import api from "@/services/api";
 
 export default function Orders() {
     const { order, loadOrders } = useOrders();
-    const [refreshing, setRefreshing] = useState(false);
+    const [refreshing, setRefreshing] = useState<boolean>(false);
+    const [loadingId, setLoadingId] = useState<number | null>(null)
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
@@ -15,22 +17,44 @@ export default function Orders() {
     }, [loadOrders]);
 
     const activeOrders = useMemo(() => 
-        order?.filter(o => ['pending', 'preparing', 'shipped'].includes(o.status)) || [], 
+        order?.filter(o => ['paid', 'preparing', 'shipped'].includes(o.status)) || [], 
     [order]);
 
     const pastOrders = useMemo(() => 
         order?.filter(o => ['delivered', 'cancelled', 'completed'].includes(o.status)) || [], 
     [order]);
-    
+
     const getStatusDetails = (status: string) => {
         switch (status) {
-            case 'pending': return { label: 'Aguardando', color: '#f39c12', icon: 'time-outline' };
+            case 'paid': return { label: 'Aguardando', color: '#f39c12', icon: 'time-outline' };
             case 'preparing': return { label: 'Preparando', color: '#3498db', icon: 'restaurant-outline' };
             case 'shipped': return { label: 'Em rota', color: '#9b59b6', icon: 'bicycle-outline' };
             case 'delivered': return { label: 'Entregue', color: '#2ecc71', icon: 'checkmark-circle-outline' };
             default: return { label: 'Cancelado', color: '#e74c3c', icon: 'close-circle-outline' };
         }
     };
+
+    const cancelOrder = async (id: number) => {
+        setLoadingId(id)
+        try{
+            const response = await api.patch(`/cancel-order/${id}`)
+            const res = response.data
+
+            if(res.error){
+                setLoadingId(null)
+                Alert.alert('Erro', `${res.message}`)
+                return;
+            }
+            
+            setLoadingId(null)
+            Alert.alert('Sucesso', `${res.message}`)
+            return;
+        }   
+        catch(err){
+            setLoadingId(null)
+            console.log('Erro ao cancelar pedido: ',err)
+        }
+    }
     
     const OrderCard = ({ item }: { item: any }) => {
         const status = getStatusDetails(item.status);
@@ -72,21 +96,19 @@ export default function Orders() {
                             </View>
                         ))}
                     </View>
-                    
-                    {item.orderItems?.[0]?.product?.photo && (
-                        <Image 
-                            source={{ uri: item.orderItems[0].product.image }} 
-                            style={styles.productImage}
-                        />
-                    )}
                 </View>
 
                 <View style={styles.divider} />
 
                 {/* Botões de Ação Inferiores */}
                 <View style={styles.footer}>
-                    <TouchableOpacity style={styles.btnAction}>
-                        <Text style={styles.btnTextRed}>Cancelar</Text>
+                    <TouchableOpacity style={styles.btnAction} onPress={() => cancelOrder(item.id)}>
+                        
+                        {loadingId === item.id ? (
+                            <ActivityIndicator color={'#ea1d2c'}/>
+                        ) : (
+                            <Text style={styles.btnTextRed}>Cancelar</Text>
+                        )}
                     </TouchableOpacity>
                     
                     <TouchableOpacity style={styles.btnAction}>

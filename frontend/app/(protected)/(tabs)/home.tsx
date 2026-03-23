@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Alert, FlatList, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useNears } from "@/contexts/nearShopsContext";
 import { useCart } from "@/contexts/CartContext";
@@ -12,6 +12,7 @@ import { useUser } from "@/contexts/UserContext";
 import SubCartItems from "@/components/subCartItems";
 import { useAddress } from "@/contexts/AddressContext";
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 
 const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR;
 
@@ -24,22 +25,26 @@ export default function Home() {
     const [visible, setVisible] = useState<boolean>(false)
     const [addressModal, setAddressModal] = useState<boolean>(false)
     const [subCartItemsVisible, setSubCartItemsVisible] = useState<boolean>(false)
+    const [currentFrete, setCurrentFrete] = useState<string>('')
     
     const { user, setUser } = useUser();
     const { stores, loadNearShop} = useNears()
-    const { cart, getCartItemsCount, updateQuantity, clearItemCart } = useCart();
+    const { cart, getCartItemsCount, updateQuantity, clearItemCart, setCurrentShop } = useCart();
     const { address } = useAddress();
 
     const currentAddress = (Array.isArray(address) && address.length > 0) ? address.find((item) => item.isDefault === true) : null;
 
     useFocusEffect(
         useCallback(() => {
-            loadNearShop()
-            checkBiometry();
             checkCartItems();
-            registerToken();
         }, [])
     )
+
+    useEffect(() => {
+        checkBiometry();
+        registerToken();
+        loadNearShop()
+    }, [address])
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true)
@@ -79,15 +84,15 @@ export default function Home() {
             return;
         }
 
-        const token = (await Notifications.getExpoPushTokenAsync()).data;
-        console.log('token gerado com sucesso! ', token)
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
+        const token = (await Notifications.getExpoPushTokenAsync({projectId})).data;
         return token;
     }
 
     const registerToken = async () => {
-        try{
+        try{            
             const token = await checkNotifications();
-
+            // console.log('Token gerado: ', token)
             const response = await setUser(Number(user?.id), {pushToken: token})
             return response;
 
@@ -155,9 +160,10 @@ export default function Home() {
                 renderItem={({ item }) => (
                     <TouchableOpacity style={styles.shopCard} activeOpacity={0.7} 
                         onPress={() =>{
+                            setCurrentShop(item)
                             if(item.status === true) return router.push({
                                 pathname: `../menu/${item.id}`,
-                                params: { distance: String(item.distance) }
+                                params: { distance: String(item.distance), duration: String(item.duration), frete: String(item.frete) }
                             })
                         }}>
                         
@@ -192,8 +198,8 @@ export default function Home() {
                 )}
             />
 
-            <CartItems cart={cart} updateQuantity={updateQuantity} clearItemCart={clearItemCart} visible={visible} onClose={() => setVisible(false)} />
             <SubCartItems cart={cart} visible={subCartItemsVisible}/>
+            <CartItems cart={cart} updateQuantity={updateQuantity} clearItemCart={clearItemCart} visible={visible} onClose={() => setVisible(false)} />
                 
             <AddressLocation visible={addressModal} onClose={() => setAddressModal(false)} address={currentAddress || null} userId={Number(user?.id)} />
         </View>

@@ -1174,10 +1174,13 @@ const validaToken = async (token) => {
                 return {
                     productId: prod.id,
                     quantity: i.quantity,
-                    price: prod.price                 
+                    price: prod.price,
+                    frete: i.frete ? parseFloat(i.frete) : 0                 
                 };
             });
 
+            totalCentavos += final.reduce((acc, item) => acc + Math.round(item.frete * 100), 0);
+            
             const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
 
             const exists = await prisma.Order.findFirst({

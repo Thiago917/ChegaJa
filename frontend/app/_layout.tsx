@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'react-native';
 import { useEffect } from 'react';
+import { UserProvider } from '@/contexts/UserContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -21,8 +22,10 @@ export default function RootLayout() {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor="white" />
-      <Stack screenOptions={{ headerShown: false }} />
+      <UserProvider>
+        <StatusBar barStyle="dark-content" backgroundColor="white" />
+        <Stack screenOptions={{ headerShown: false }} />
+      </UserProvider>
     </>
   );
 }

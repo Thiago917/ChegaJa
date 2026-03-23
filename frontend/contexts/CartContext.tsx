@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { Products } from './MenuContext';
-import { Alert } from 'react-native';
-import { router } from 'expo-router';
+import { Shop } from './ShopContext';
+import { Shops } from './nearShopsContext';
 
 export type CartItem = {
   id: string;
@@ -14,6 +14,8 @@ type CartContextType = {
   removeFromCart: (productId: number) => void;
   updateQuantity: (product: Products, delta: number) => void;
   clearItemCart: (product: Products) => void;
+  setCurrentShop: (shop: Shops) => void;
+  currentShop: () => Shops | null;
   clearCart: () => void;
   getCartTotal: () => number;
   getCartItemsCount: () => number;
@@ -24,23 +26,26 @@ const CartContext = createContext<CartContextType>({} as CartContextType);
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [currentShopData, setCurrentShopState] = useState<Shops | null>(null);
 
   const removeFromCart = (productId: number) => {
     setCart(prev => prev.filter(item => item.item.id !== productId));
   };
 
   const updateQuantity = (product: Products, delta: number) => {
+    console.log('Atualizando carrinho...');
     setCart(prev => {
+      const existingItem = prev.find(item => item.item.id === product.id);
 
-      const findCartItem = prev.find(item => item.item.id === product.id);
+      if (existingItem) {
+        const newQuantity = existingItem.quantity + delta;
 
-      if (findCartItem) {
-        const newQuantity = findCartItem.quantity + delta;
-
+        // 1. Se a nova quantidade for 0 ou menos, REMOVE o item do array
         if (newQuantity <= 0) {
-          return prev.map(item => item.item.id === product.id ? {...item, ...prev} : item);
+          return prev.filter(item => item.item.id !== product.id);
         }
 
+        // 2. Se o item existe e a quantidade é > 0, atualiza apenas a quantidade
         return prev.map(item =>
           item.item.id === product.id
             ? { ...item, quantity: newQuantity }
@@ -48,7 +53,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         );
       }
 
-
+      // 3. Se o item não existe e estamos adicionando (delta > 0)
       if (delta > 0) {
         return [...prev, {
           id: `${product.id}-${Date.now()}`,
@@ -59,7 +64,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             price: product.price,
             category: product.category,
             photo: product.photo,
-            status: product.status
+            status: product.status,
           }
         }];
       }
@@ -88,9 +93,21 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const getCartTotal = () => {
-    return getCartSubtotal() + 8.99; // 8.99 é a taxa de entrega
+    return getCartSubtotal(); // 8.99 é a taxa de entrega
   };
 
+  const setCurrentShop = (shop: Shops) => {
+    if (currentShopData && currentShopData.id !== shop.id) {
+      setCurrentShopState({} as any)
+    }
+    setCurrentShopState(shop);
+  }
+
+  const currentShop = () => {
+    return currentShopData;
+  }
+
+  
   return (
     <CartContext.Provider
       value={{
@@ -99,6 +116,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         updateQuantity,
         clearCart,
         clearItemCart,
+        setCurrentShop,
+        currentShop,
         getCartTotal,
         getCartItemsCount,
         getCartSubtotal,

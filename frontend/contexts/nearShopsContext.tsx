@@ -3,7 +3,7 @@ import api from "@/services/api";
 import * as Location from 'expo-location';
 import socket from "@/services/socket";
 
-type Shops = {
+export type Shops = {
     id: number;
     name: string;
     status: boolean;

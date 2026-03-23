@@ -1,20 +1,19 @@
 import OrderCard from "@/components/orderCard";
 import ToggleShopStatus from "@/components/toggleShopStatus";
 import { useOrders } from "@/contexts/MyOrdersContext";
-import { useNears } from "@/contexts/nearShopsContext";
 import { useShop } from "@/contexts/ShopContext";
 import { useUser } from "@/contexts/UserContext";
-import { Link, router, useUnstableGlobalHref } from "expo-router";
+import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR;
 
-
 export default function Shopping() {
-  const [loading, setLoading] = useState<boolean>(false);
   const [modalVisible, setModalVisible] = useState<boolean>(false)
-  const {shop, setShop} = useShop()
+  const [refreshing, setRefreshing] = useState<boolean>(false)
+  
+  const {shop, setShop, loadShopData} = useShop()
   const {order} = useOrders()
   const {user} = useUser()
 
@@ -50,7 +49,21 @@ export default function Shopping() {
     setShop(id, {status: status});
     setModalVisible(false);
   };
-      
+
+  const onRefresh = async () => {
+    setRefreshing(true)
+    try{
+      await loadShopData()
+      await new Promise(resolve => setTimeout(resolve, 1500))
+    }
+    catch(err){
+      console.log(err)
+    }
+    finally{
+      setRefreshing(false)
+    }
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.headerContent}>
@@ -69,18 +82,26 @@ export default function Shopping() {
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
           <Text style={styles.statLabel}>Pedidos hoje</Text>
-          <Text style={styles.statValue}>12</Text>
+          <Text style={styles.statValue}>{shop?.orders}</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statLabel}>Faturamento</Text>
-          <Text style={styles.statValue}>R$ 450,00</Text>
+          <Text style={styles.statValue}>R$ {String(shop?.founding).replace('.',',')}</Text>
         </View>
       </View>
 
       <View style={styles.ordersSection}>
         <Text style={styles.sectionTitle}>Pedidos de hoje</Text>
 
-        <ScrollView>
+        <ScrollView
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[MAIN_COLOR || '#000000']}
+            tintColor={MAIN_COLOR}          
+         />}
+        >
         {order?.map((item) => (
             <OrderCard key={item.id} id={item.id} cliente={user?.name || ''} itens={item.orderItems} horario={'09:59 AM'} total={item.total} status={item.status}/>
           ))}

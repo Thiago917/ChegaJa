@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import api from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,18 +7,23 @@ import { Products } from '@/contexts/MenuContext';
 import { CartItems } from '@/components/cartItems';
 import { useCart } from '@/contexts/CartContext';
 import SubCartItems from '@/components/subCartItems';
+import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
 
 export default function MenuScreen() {
-  const { shopId, distance } = useLocalSearchParams();
   const [menu, setMenu] = useState<any[]>([]);
   const [shop, setShop] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [cartModalVisible, setCartModalVisible] = useState(false);
   const [subCartItemsVisible, setSubCartItemsVisible] = useState(false);
-  const { cart, updateQuantity, getCartItemsCount, clearItemCart } = useCart();
-  const distanceFormatted = distance ? `${parseFloat(distance as string).toFixed(1)} km` : '-- km';
+  
+  const { shopId, distance, duration, frete } = useLocalSearchParams();
+  const { cart, updateQuantity, getCartItemsCount, clearItemCart, currentShop } = useCart();
   
   const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR || '#e74c3c';
+
+  const currShop = currentShop()
+
+  const freteValue = currentShop()?.frete || shop?.frete || '0,00';
 
   useEffect(() => {
     if (shopId) {
@@ -58,6 +63,7 @@ export default function MenuScreen() {
             source={{ uri: 'https://media.istockphoto.com/id/1300665551/pt/foto/feijoada-brazilian-traditional-dish.webp?s=2048x2048&w=is&k=20&c=AELQs4EnpsAS_ulSkqWhfbml9nMZ4b8STA8O1pLmtzM=' }} 
             style={styles.coverImage} 
           />
+
           <View style={styles.topButtons}>
             <TouchableOpacity style={styles.iconCircle} onPress={() => router.push('../home')}><Ionicons name="chevron-back" size={24} color="#FFF" /></TouchableOpacity>
             <View style={{ flexDirection: 'row' }}>
@@ -87,7 +93,7 @@ export default function MenuScreen() {
              </TouchableOpacity>
           </View>
 
-          <Text style={styles.shopSub}>Entrega rastreável • {distanceFormatted} • Min R$ 20,00</Text>
+          <Text style={styles.shopSub}>Entrega rastreável • {currShop?.distance} • Min R$ 20,00</Text>
           
           <View style={styles.ratingRow}>
             <Ionicons name="star" size={14} color="#C6A400" />
@@ -98,7 +104,7 @@ export default function MenuScreen() {
           </View>
 
           <View style={styles.deliveryInfoRow}>
-            <Text style={styles.deliveryMain}>Padrão • 45-60 min • R$ 8,99</Text>
+            <Text style={styles.deliveryMain}>Padrão • {currShop?.duration} min • R$ {freteValue}</Text>
           </View>
         </View>
 
@@ -140,8 +146,9 @@ export default function MenuScreen() {
           </View>
         ))}
 
+
       </ScrollView>
-      <CartItems cart={cart} updateQuantity={updateQuantity} clearItemCart={clearItemCart} visible={cartModalVisible} onClose={() => setCartModalVisible(false)} />
+      <CartItems cart={cart} updateQuantity={updateQuantity} clearItemCart={clearItemCart} visible={cartModalVisible} onClose={() => setCartModalVisible(false)}/>
       <SubCartItems cart={cart} visible={subCartItemsVisible}/>
 
 

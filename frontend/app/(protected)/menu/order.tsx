@@ -6,7 +6,6 @@ import AddressLocation from "@/components/addressLocation";
 import { useCart } from "@/contexts/CartContext";
 import { useUser } from '@/contexts/UserContext'
 import { AddressType, useAddress } from "@/contexts/AddressContext";
-import Checkbox from "expo-checkbox";
 import { useStripe } from "@stripe/stripe-react-native";
 import api from "@/services/api";
 
@@ -25,12 +24,14 @@ export default function Order(){
 
     const { user } = useUser();
     const { address, setAddress } = useAddress();
-    const { cart, getCartSubtotal, getCartTotal, clearCart } = useCart();
+    const { cart, getCartSubtotal, getCartTotal, clearCart, currentShop } = useCart();
     const { initPaymentSheet, presentPaymentSheet } = useStripe()
 
+    const shop = currentShop();
+    const valueFrete = Number(String(shop?.frete).split(',')[0]).toFixed(2) || 0.00
+
     const subtotal = getCartSubtotal();
-    const deliveryFee = 8.99;
-    const total = getCartTotal();
+    const total = getCartTotal() + Number(valueFrete);
 
     const currentAddress = (Array.isArray(address) && address.length > 0) ? address.find((item) => item.isDefault === true) : null;
 
@@ -52,12 +53,12 @@ export default function Order(){
             
             const itemsData = cart.map((item) => ({
                 product: item.item.id,
-                quantity: item.quantity
+                quantity: item.quantity,
+                frete: Number(valueFrete)
             }));
 
             const response = await api.post('/create-payment-sheet', {
                 data: itemsData,
-                addressId: currentAddress?.id
             });
 
             if (response.data.error) {
@@ -88,28 +89,40 @@ export default function Order(){
     };
 
     const handleCheckout = async () => {
-
         if(!currentAddress) return Alert.alert('Aviso', 'Selecione um endereço de entrega antes');
 
-        setLoading(true)
+        setLoading(true);
 
-        const isReady = await processCheckout()
-    
+        const isReady = await processCheckout();
+        
         if(isReady){
-            const {error: presentError} = await presentPaymentSheet();
+
+            const { error: presentError } = await presentPaymentSheet();
 
             if(presentError){
-                console.log('Pagamento não concluído: ', presentError.message)
-                setLoading(false)
+                setLoading(false);
+            } else {     
+                try {
+                    await api.post('/send-notify', {
+                        token: user?.pushToken,
+                        title: 'Pagamento efetuado com sucesso!',
+                        body: `Seu pedido no valor de R$ ${total.toFixed(2).replace('.',',')} foi efetuado com sucesso!`
+                    });
+                } catch (notifyErr) {
+                    console.log("Erro ao enviar notificação, mas o pagamento foi feito.");
+                }
+
+                clearCart(); // Limpa o carrinho para evitar duplicidade
+                setLoading(false);
+                
+                Alert.alert("Sucesso", "Pedido realizado!", [
+                    { text: "OK", onPress: () => router.replace('/home') }
+                ]);
             }
-            else{
-                Alert.alert('Sucesso', 'Pedido realizado com sucesso!')
-                setLoading(false)
-                clearCart()
-                return router.replace('/home')   
-            }
+        } else {
+            setLoading(false); // Se o processCheckout falhar internamente
         }
-    }
+}
 
     return(
         <View style={styles.container}>
@@ -163,7 +176,7 @@ export default function Order(){
                                     </View>
                                     <View style={styles.summaryRow}>
                                         <Text style={styles.summaryLabel}>Taxa de entrega</Text>
-                                        <Text style={styles.summaryValue}>R$ {deliveryFee.toFixed(2).replace('.', ',')}</Text>
+                                        <Text style={styles.summaryValue}>R$ {shop?.frete || '0,00'}</Text>
                                     </View>
                                     <View style={[styles.summaryRow, styles.totalRow]}>
                                         <Text style={styles.totalLabel}>Total</Text>
