@@ -4,7 +4,7 @@ import cors from '@fastify/cors';
 import jwtPlugin from './plugins/jwt.js'
 import authPlugin from './plugins/authenticate.js'
 import { PrismaClient } from '@prisma/client';
-import { z } from 'zod';
+import { includes, z } from 'zod';
 import bcrypt, { hash } from 'bcrypt';
 import nodemailer from 'nodemailer';
 import rateLimit from '@fastify/rate-limit' 
@@ -167,8 +167,8 @@ const getGeolocation = async (cep) => {
         const data = response.data
 
         if(data.status === 'OK'){
-            const {lat, lng} = data.results[0].geometry.location; 
-            return {lat, lng}
+
+            return data.results[0]
         }
         else{
             throw new Error(`Google Maps API Status: ${response.data.status} - ${response.data.error_message || ''}`);
@@ -743,11 +743,11 @@ const validaToken = async (token) => {
             where: {userId, isDefault: true}
         })
 
-        const {lat, lng} = await getGeolocation(cep)
+        const {geometry} = await getGeolocation(cep)
 
-        if(!userId || !lat || !lng) return res({message: 'Não foi possível encontrar dados do usuário', error: true})
+        if(!userId || !geometry) return res({message: 'Não foi possível encontrar dados do usuário', error: true})
 
-        const calc = await searchArea(lat, lng, radiusKm)
+        const calc = await searchArea(geometry.location.lat, geometry.location.lng, radiusKm)
         if(calc.error) return res.send({message: calc.res})
         const nearShops = await prisma.shop.findMany({
             where: {
@@ -766,7 +766,7 @@ const validaToken = async (token) => {
         
         const shopsWithDistance = await Promise.all(
             nearShops.map(async (shop) => {
-                const distance = await calculateDistance(lat, lng, shop.latitude, shop.longitude)
+                const distance = await calculateDistance(geometry.location.lat, geometry.location.lng, shop.latitude, shop.longitude)
                 return{
                     ...shop,
                     distance: distance.distance,
@@ -1138,12 +1138,124 @@ const validaToken = async (token) => {
 //ORDER - END
 
 
+//DELIVERY - START
+
+
+    fastify.post('/delivery-orders', {onRequest:[fastify.authenticate]}, async (req, res) => {
+
+        const user_id = req.user.id
+        const {driverLat, driverLng} = req.body
+
+        const user = await prisma.User.findUnique({
+            where: {id: user_id}
+        })
+
+        if(!user) return res.send({message: 'Usuário não encontrado', error: true})
+
+        const open_orders = await prisma.Order.findMany({
+            where: {status: 'preparing'},
+            include: {
+                shop: true, 
+                user: {
+                    include:{
+                        Addresses: {
+                            where: {isDefault: true}
+                        }
+                    }
+            }}
+        })
+
+        const data = await Promise.all(
+            open_orders.map(async (item) => {
+                
+                const origin = await getGeolocation(item.shop.cep) || 'Origem não encontrada'
+                const destin = await getGeolocation(item.user.Addresses[0].cep) || 'Destino não encontrado'
+                const distance_origin = await calculateDistance(driverLat, driverLng, origin.geometry.location.lat, origin.geometry.location.lng)
+                const distance_destin = await calculateDistance(driverLat, driverLng, destin.geometry.location.lat, destin.geometry.location.lng)
+                
+                return {
+                    ...item,
+                    origin: origin.formatted_address, 
+                    destin: destin.formatted_address,
+                    distance_origin: distance_origin,
+                    distance_destin: distance_destin 
+                }
+            })
+        )
+        return res.send(data)
+
+    })
+
+    fastify.post('/delivery-details', {onRequest:[fastify.authenticate]}, async (req, res) => {
+
+        const {driverLat, driverLng, id} = req.body
+
+        const open_orders = await prisma.Order.findUnique({
+            where: {id},
+            include: {
+                shop: true, 
+                user: {
+                    include:{
+                        Addresses: {
+                            where: {isDefault: true}
+                        }
+                    }
+            }}
+        })
+
+        const data = await Promise.all(
+            open_orders.map(async (item) => {
+                
+                const origin = await getGeolocation(item.shop.cep) || 'Origem não encontrada'
+                const destin = await getGeolocation(item.user.Addresses[0].cep) || 'Destino não encontrado'
+                const distance_origin = await calculateDistance(driverLat, driverLng, origin.geometry.location.lat, origin.geometry.location.lng)
+                const distance_destin = await calculateDistance(driverLat, driverLng, destin.geometry.location.lat, destin.geometry.location.lng)
+                
+                return {
+                    ...item,
+                    origin: origin.formatted_address, 
+                    destin: destin.formatted_address,
+                    distance_origin: distance_origin,
+                    distance_destin: distance_destin 
+                }
+            })
+        )
+
+        return res.send(data)
+
+    })
+
+    fastify.patch('/update-delivery/:id', {onRequest:[fastify.authenticate]} ,async (req, res) => {
+
+        const {updates} = req.body
+        const id = Number(req.params.id)
+
+        const [_, result] = await prisma.$transaction([
+            prisma.Order.findUnique({
+                where: {id}
+            }),
+            prisma.Order.update({
+                where: {id},
+                data: updates
+            })
+        ])
+
+        if(!_ || !result) return res.send({message: 'Erro ao atualizar dados da entrega', error: true})
+
+        return res.send({message: 'Dados da entrega atualizados com sucesso!', error: false})
+
+    })
+
+//DELIVERY - END
+
+
+
 //STRIPE - START
 
     fastify.post('/create-payment-sheet', {onRequest:[fastify.authenticate]}, async (req, res) => {
         try{
             const {data} = req.body
-
+            console.log(data)
             const userId = req.user.id
 
             const user = await prisma.User.findUnique({
@@ -1175,12 +1287,11 @@ const validaToken = async (token) => {
                     productId: prod.id,
                     quantity: i.quantity,
                     price: prod.price,
-                    frete: i.frete ? parseFloat(i.frete) : 0                 
                 };
             });
+            const freteCentavos = Math.round(data[0].frete * 100)
+            totalCentavos += freteCentavos ;
 
-            totalCentavos += final.reduce((acc, item) => acc + Math.round(item.frete * 100), 0);
-            
             const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
 
             const exists = await prisma.Order.findFirst({
@@ -1233,6 +1344,7 @@ const validaToken = async (token) => {
                     userId: userId,
                     shopId: store.id,
                     total: totalCentavos / 100,
+                    frete: freteCentavos / 100,
                     paymentId: paymentIntent.id,
                     orderItems:{
                         create: final

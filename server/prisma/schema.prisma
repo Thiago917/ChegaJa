@@ -123,6 +123,7 @@ model Order {
   userId      Int
   shopId      Int
   total       Float
+  frete       Float?
   status      String    @default("pending")
   paymentId   String?   @unique
   createdAt   DateTime  @default(now())
