@@ -119,14 +119,16 @@ model Product {
 }
 
 model Order {
-  id          Int       @id @default(autoincrement())
-  userId      Int
-  shopId      Int
-  total       Float
-  frete       Float?
-  status      String    @default("pending")
-  paymentId   String?   @unique
-  createdAt   DateTime  @default(now())
+  id            Int       @id @default(autoincrement())
+  userId        Int
+  shopId        Int
+  total         Float
+  frete         Float?
+  status        String    @default("pending")
+  paymentId     String?   @unique
+  pickupCode    String?   @unique
+  deliveryCode  String?   @unique
+  createdAt     DateTime  @default(now())
 
   user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   shop    Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)

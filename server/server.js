@@ -1153,7 +1153,7 @@ const validaToken = async (token) => {
         if(!user) return res.send({message: 'Usuário não encontrado', error: true})
 
         const open_orders = await prisma.Order.findMany({
-            where: {status: 'preparing'},
+            where: {status: {in: ['preparing','collecting', 'shipped']}},
             include: {
                 shop: true, 
                 user: {
@@ -1190,7 +1190,7 @@ const validaToken = async (token) => {
 
         const {driverLat, driverLng, id} = req.body
 
-        const open_orders = await prisma.Order.findUnique({
+        const item = await prisma.Order.findUnique({
             where: {id},
             include: {
                 shop: true, 
@@ -1202,30 +1202,25 @@ const validaToken = async (token) => {
                     }
             }}
         })
-
-        const data = await Promise.all(
-            open_orders.map(async (item) => {
                 
-                const origin = await getGeolocation(item.shop.cep) || 'Origem não encontrada'
-                const destin = await getGeolocation(item.user.Addresses[0].cep) || 'Destino não encontrado'
-                const distance_origin = await calculateDistance(driverLat, driverLng, origin.geometry.location.lat, origin.geometry.location.lng)
-                const distance_destin = await calculateDistance(driverLat, driverLng, destin.geometry.location.lat, destin.geometry.location.lng)
-                
-                return {
-                    ...item,
-                    origin: origin.formatted_address, 
-                    destin: destin.formatted_address,
-                    distance_origin: distance_origin,
-                    distance_destin: distance_destin 
-                }
-            })
-        )
+        const origin = await getGeolocation(item.shop.cep) || 'Origem não encontrada'
+        const destin = await getGeolocation(item.user.Addresses[0].cep) || 'Destino não encontrado'
+        const distance_origin = await calculateDistance(driverLat, driverLng, origin.geometry.location.lat, origin.geometry.location.lng)
+        const distance_destin = await calculateDistance(driverLat, driverLng, destin.geometry.location.lat, destin.geometry.location.lng)
+        
+        const data = {
+            ...item,
+            origin: origin.formatted_address, 
+            destin: destin.formatted_address,
+            distance_origin: distance_origin,
+            distance_destin: distance_destin 
+        }
 
         return res.send(data)
 
     })
 
-    fastify.patch('/update-delivery/:id', {onRequest:[fastify.authenticate]} ,async (req, res) => {
+    fastify.patch('/update-delivery/:id', {onRequest:[fastify.authenticate]}, async (req, res) => {
 
         const {updates} = req.body
         const id = Number(req.params.id)
@@ -1246,6 +1241,70 @@ const validaToken = async (token) => {
 
     })
 
+    fastify.post('/create-pickup', {onRequest:[fastify.authenticate]}, async (req, res) => {
+
+        const user_id = req.user.id
+        const {orderId} = req.body
+
+        if(!user_id) return res.send({message: 'Usuário não encontrado', error: true})
+        try{
+
+            const code = Math.floor(1000 + Math.random() * 9000).toString()
+
+            const data = await prisma.Order.update({
+                where: {id: orderId},
+                data: {
+                    pickupCode: code,
+                    status: 'collecting'
+                }
+            })
+
+            if(!data) res.send({message: 'Pedido não encontrado!', error: true})
+
+            io.emit('order-updated', data)
+            return res.send('ok')
+
+        }
+        catch(err){
+            console.log({message: 'Erro ao gerar código de coleta do pedido', detalhes: err})
+            return res.send({message: 'Erro ao gerar código de coleta do pedido', error: true})
+        }
+    })
+
+    fastify.post('/verify-pickup', {onRequest:[fastify.authenticate]}, async (req, res) => {
+
+        const user_id = req.user.id
+        
+        if(!user_id) return res.send({message: 'Usuário não encontrado', error: true})
+
+        const {pin, orderId} = req.body
+
+        const verify = await prisma.Order.findUnique({
+            where: {id: orderId}
+        })
+
+        if(!verify) return res.send({message: 'Pedido não encontrado!', error: true});
+
+        if(verify.pickupCode === pin){
+            const updt_order = await prisma.Order.update({
+                where: {id: orderId},
+                data: {
+                    status: 'shipped'
+                }
+            })
+
+            if(!updt_order) return res.send({message: 'Erro ao atualizar dados do pedido', error: true})
+
+            
+            io.emit('order-upadted', updt_order)
+
+            return res.send({message: 'Pedido coletado, para concluir a entrega, vá em direção ao cliente', error: false});
+        }
+        else{
+            return res.send({message: 'Código incorreto, tente novamente!', error: true});
+        }
+
+    })
 //DELIVERY - END
 
 
@@ -1409,7 +1468,13 @@ const validaToken = async (token) => {
     fastify.post('/send-notify', async (req, res) => {
 
         const {title, body, token} = req.body
-        await sendPushNotification(token, title, body)
+
+        try{
+            await sendPushNotification(token, title, body)
+        }
+        catch(err){
+            console.log('Erro ao enviar notificação: ', err)
+        }
 
     })  
 
