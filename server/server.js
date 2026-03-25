@@ -1286,17 +1286,20 @@ const validaToken = async (token) => {
         if(!verify) return res.send({message: 'Pedido não encontrado!', error: true});
 
         if(verify.pickupCode === pin){
-            const updt_order = await prisma.Order.update({
+                
+            const del_code = Math.floor(1000 + Math.random() * 9000).toString()
+
+            const updt = await prisma.Order.update({
                 where: {id: orderId},
                 data: {
+                    deliveryCode: del_code,
                     status: 'shipped'
                 }
             })
 
-            if(!updt_order) return res.send({message: 'Erro ao atualizar dados do pedido', error: true})
+            if(!updt) return res.send({message: 'Erro ao incluir código de entrega', error: true})
 
-            
-            io.emit('order-upadted', updt_order)
+            io.emit('order-updated', updt)
 
             return res.send({message: 'Pedido coletado, para concluir a entrega, vá em direção ao cliente', error: false});
         }
