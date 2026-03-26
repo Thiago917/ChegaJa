@@ -1330,6 +1330,40 @@ const validaToken = async (token) => {
 
     })
 
+    fastify.post('/verify-delivery', {onRequest:[fastify.authenticate]}, async (req, res) => {
+
+        const user_id = req.user.id
+        
+        const {pin, orderId} = req.body
+        
+        if(!user_id) return res.send({message: 'Usuário não foi encontrado', error: false})
+
+        const get_order = await prisma.Order.findUnique({
+            where: {id: orderId}
+        })
+
+        if(!get_order) return res.send({message: 'Pedido não encontrado', error: true})
+        
+        if (get_order.deliveryCode === pin){
+
+            const order = await prisma.Order.update({
+                where: {id: orderId},
+                data: {
+                    status: 'delivered'
+                }
+            })
+
+            io.emit('order-updated', order)
+            return res.send({message: 'Pedido entregue com sucesso!', error: false})
+
+        }
+        else{
+            return res.send({message: 'Código incorreto, tente novamente!', error: true});
+        }
+        
+
+    })
+
 //DELIVERY - END
 
 
@@ -1494,11 +1528,9 @@ const validaToken = async (token) => {
                     where: {paymentId},
                     data: {status: 'paid'}
                 })
-                console.log('emitindo order-updated')
                 io.emit('order-updated', order)
                 break
         }
-
 
         res.send({ received: true })
 
