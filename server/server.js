@@ -129,7 +129,12 @@ const calculateDistance = async (lat1, long1, lat2, long2) => {
     const response = await axios.get(`${api_url}?origins=${lat1},${long1}&destinations=${lat2},${long2}&key=${api_key}`)
     const res = response.data
     const distance = res.rows[0].elements[0].distance.text 
-    const frete = Number(distance.split(' ')[0]) * 0.5
+    let frete = Number(distance.split(' ')[0]) * 0.5
+
+    if(Math.round(frete) === 0){
+        frete = 1.9
+    }
+
     return {
         distance: distance,
         time: res.rows[0].elements[0].duration.text.split(' ')[0],
@@ -618,6 +623,10 @@ const validaToken = async (token) => {
 
         if(exists) return res.send({message: 'Endereço já está cadastrado', error: true})
         
+        const {geometry} = await getGeolocation(data.cep)
+        
+        const {latitude, longitude} = geometry.location
+
         const [_, __, result] = await prisma.$transaction([
             ...(data.isDefault ? [prisma.address.updateMany({
                 where: { userId, isDefault: true },
@@ -633,6 +642,8 @@ const validaToken = async (token) => {
                     cidade: data.city,
                     estado: data.uf,
                     cep: data.cep,
+                    latitude: latitude,
+                    longitude: longitude,
                     apelido: data.label,
                     isDefault: data.isDefault 
                 }
@@ -698,6 +709,7 @@ const validaToken = async (token) => {
     });
 
 //USER - END
+
 
 
 //SHOP - START
@@ -845,6 +857,7 @@ const validaToken = async (token) => {
 //SHOP - END
 
 
+
 //MENU - START
 
     fastify.get('/products', {onRequest:[fastify.authenticate]}, async (req, res) => {
@@ -979,6 +992,7 @@ const validaToken = async (token) => {
 //MENU - END
 
 
+
 //ORDER - START
 
     fastify.get('/orders', {onRequest:[fastify.authenticate]}, async (req, res) => {
@@ -1020,12 +1034,19 @@ const validaToken = async (token) => {
                     }
                 }),
                 prisma.order.findMany({
-                    where: {userId},
-                    where: {orderItems:{userId}}
+                    where: {
+                        userId
+                    },
+                    include: {
+                        orderItems:true
+                    },
+                    orderBy: {
+                        createdAt: 'desc'
+                    }
                 })
             ])
         
-            io.emit('new-order-list', {result})
+            io.emit('new-order-list', result)
 
             return res.send({ message: 'Pedido criado com sucesso', orderId: order.id, error: false });
         } catch (error) {
@@ -1060,18 +1081,18 @@ const validaToken = async (token) => {
             let title = '';
             let body = '';
             switch (result.status) {
-            case 'preparing':
-                title = 'Pedido em preparo! 🥗';
-                body = 'O restaurante começou a preparar seu pedido.';
-                break;
-            case 'shipped':
-                title = 'Saiu para entrega! 🛵';
-                body = 'O entregador já está a caminho do seu endereço.';
-                break;
-            case 'delivered':
-                title = 'Bom apetite! 😋';
-                body = 'Seu pedido foi entregue. Avalie-nos no app!';
-                break;
+                case 'preparing':
+                    title = 'Pedido em preparo! 🥗';
+                    body = 'O restaurante começou a preparar seu pedido.';
+                    break;
+                case 'shipped':
+                    title = 'Saiu para entrega! 🛵';
+                    body = 'O entregador já está a caminho do seu endereço.';
+                    break;
+                case 'delivered':
+                    title = 'Bom apetite! 😋';
+                    body = 'Seu pedido foi entregue. Avalie-nos no app!';
+                    break;
             }
 
             if (title) {
@@ -1138,8 +1159,8 @@ const validaToken = async (token) => {
 //ORDER - END
 
 
-//DELIVERY - START
 
+//DELIVERY - START
 
     fastify.post('/delivery-orders', {onRequest:[fastify.authenticate]}, async (req, res) => {
 
@@ -1308,6 +1329,7 @@ const validaToken = async (token) => {
         }
 
     })
+
 //DELIVERY - END
 
 
@@ -1317,7 +1339,6 @@ const validaToken = async (token) => {
     fastify.post('/create-payment-sheet', {onRequest:[fastify.authenticate]}, async (req, res) => {
         try{
             const {data} = req.body
-            console.log(data)
             const userId = req.user.id
 
             const user = await prisma.User.findUnique({
@@ -1401,31 +1422,48 @@ const validaToken = async (token) => {
                 }
             });
             
-            const saveOrder = await prisma.Order.create({
-                data:{
-                    userId: userId,
-                    shopId: store.id,
-                    total: totalCentavos / 100,
-                    frete: freteCentavos / 100,
-                    paymentId: paymentIntent.id,
-                    orderItems:{
-                        create: final
+            const [_, result] = await prisma.$transaction([
+                prisma.Order.create({
+                    data:{
+                        userId: userId,
+                        shopId: store.id,
+                        total: totalCentavos / 100,
+                        frete: freteCentavos / 100,
+                        paymentId: paymentIntent.id,
+                        orderItems:{
+                            create: final
+                        }
                     }
-                }
-            })
+                }),
+                prisma.Order.findMany({
+                    where: {userId},
+                    include: {
+                        shop: true, 
+                        orderItems: {
+                            include: {
+                                product: true
+                            }
+                        }
+                    },
+                    orderBy: {createdAt: 'desc'}
+                })
+            ])
 
-            if(!saveOrder) return res.send({message: 'Erro ao criar PaymentIntent no banco', error: true})
+            if(!result) return res.send({message: 'Erro ao criar pedido no banco', error: true})
+
+            io.emit('new-order-list', result)
 
             await stripe.paymentIntents.update(paymentIntent.id, {
-                metadata: {orderId: saveOrder.id}
+                metadata: {orderId: _.id}
             })
+
 
             return res.send({
                 paymentIntent: paymentIntent.client_secret,
                 customer: customer,
                 publishableKey: process.env.STRIPE_PUBLISHABLED_KEY,
                 oldOrder: false,
-                order: saveOrder
+                order: _
             })        
         }
         catch(err){
@@ -1452,18 +1490,22 @@ const validaToken = async (token) => {
         switch(event.type){
             case 'payment_intent.succeeded':
                 const paymentId = event.data.object.id
-                await prisma.Order.update({
+                const order = await prisma.Order.update({
                     where: {paymentId},
                     data: {status: 'paid'}
                 })
+                console.log('emitindo order-updated')
+                io.emit('order-updated', order)
                 break
         }
+
 
         res.send({ received: true })
 
     })
 
 //STRIPE - END
+
 
 
 //PUSH NOTIFICATION - START

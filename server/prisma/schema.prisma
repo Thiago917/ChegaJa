@@ -40,6 +40,8 @@ model Address {
   cidade       String
   estado       String
   cep          String
+  latitude     Float?
+  longitude    Float?
   apelido      String?  // Ex: "Casa", "Trabalho"
   isDefault    Boolean  @default(false)
   
