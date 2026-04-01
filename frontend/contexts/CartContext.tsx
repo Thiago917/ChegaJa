@@ -33,7 +33,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateQuantity = (product: Products, delta: number) => {
-    console.log('Atualizando carrinho...');
     setCart(prev => {
       const existingItem = prev.find(item => item.item.id === product.id);
 

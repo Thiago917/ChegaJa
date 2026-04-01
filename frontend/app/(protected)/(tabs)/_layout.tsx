@@ -8,6 +8,7 @@ import * as Notifications from 'expo-notifications'
 import { Platform } from "react-native";
 import { useEffect, useMemo } from "react";
 import { MyOrdersProvider, useOrders } from "@/contexts/MyOrdersContext";
+import { DeliveryProvider } from "@/contexts/DeliveryContext";
 
 
 export default function TabNavigation(){
@@ -18,7 +19,13 @@ export default function TabNavigation(){
         order?.filter(o => ['paid'].includes(o.status)) || [], 
     [order]);
     
+    const deliveryOrders = useMemo(() => 
+        order?.filter(o => ['preparing'].includes(o.status)) || [], 
+    [order]);
+
     const ordersAmount = activeOrders?.length || 0
+    const deliveries = deliveryOrders?.length || 0
+
 
     useEffect(() => {
         Notifications.setNotificationHandler({
@@ -41,12 +48,10 @@ export default function TabNavigation(){
     }, []); 
 
     return(
-        <>
+        <UserProvider>
             <StatusBar style="dark" />
             <ShopProvider>
                 <NearShopsProvider>
-                    <MyOrdersProvider>
-
                     <Tabs screenOptions={{
                         headerShown:false,
                         tabBarActiveTintColor: '#ff8c00'
@@ -93,7 +98,7 @@ export default function TabNavigation(){
                             name='driver' 
                             options={{
                                 title: 'Entregador',
-                                tabBarBadge: ordersAmount > 0 ? ordersAmount : undefined,
+                                tabBarBadge: deliveries > 0 ? deliveries : undefined,
                                 tabBarBadgeStyle:{backgroundColor: process.env.EXPO_PUBLIC_MAIN_COLOR},
                                 tabBarIcon: ({color}) => (
                                     <FontAwesome name='motorcycle' size={23} color={color} />
@@ -101,9 +106,8 @@ export default function TabNavigation(){
                             }}
                         />
                     </Tabs>
-                    </MyOrdersProvider>
                 </NearShopsProvider>
             </ShopProvider>
-        </>
+        </UserProvider>
     )
 }

@@ -12,6 +12,8 @@ export type Shops = {
     photo: string;
     distance: string;
     duration: string;
+    latitude: string;
+    longitude: string;
     frete: number;
     assessment: number;   
 }

@@ -21,7 +21,12 @@
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.thi4g0.chegaJa",
-      "googleServicesFile": "./google-services.json" 
+      "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDl_vf_S5wjsYV_sc-1C8whfWi0cBV8LzY"
+        } 
+      }
     },
     "web": {
       "output": "static",

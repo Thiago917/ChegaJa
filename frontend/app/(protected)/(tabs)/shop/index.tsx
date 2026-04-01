@@ -103,7 +103,7 @@ export default function Shopping() {
          />}
         >
         {order?.map((item) => (
-            <OrderCard key={item.id} id={item.id} cliente={user?.name || ''} itens={item.orderItems} horario={'09:59 AM'} total={item.total} status={item.status}/>
+            <OrderCard key={item.id} id={item.id} cliente={user?.name || ''} itens={item.orderItems} horario={'09:59 AM'} total={item.total} status={item.status} pickupCode={item.pickupCode}/>
           ))}
         </ScrollView>
       </View>

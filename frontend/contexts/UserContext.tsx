@@ -1,13 +1,16 @@
 import api from "@/services/api";
-import socket from "@/services/socket";
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { AddressType } from "./AddressContext";
 
-type User = {
+export type User = {
     id: number;
     name: string;
     mail: string;
     photo: string;
     pushToken: string;
+    Addresses: AddressType[];
+    latitude: number;
+    longitude: number;
 };
 
 type UserContextType = {
@@ -30,13 +33,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                 console.error(res.message || "Erro desconhecido");
                 setUserState(null);
             } else {
-                setUserState({
-                    id: res.id,
-                    name: res.name,
-                    mail: res.email,
-                    photo: res.photo,
-                    pushToken: res.pushToken
-                });
+                setUserState(res);
             }
         } catch (err: any) {
             console.error(`Erro ao carregar dados do usuário: ${err.message || err}`);

@@ -3,6 +3,7 @@ import socket from "@/services/socket";
 import { createContext, useContext, useEffect, useState } from "react";
 import { Shop } from "./ShopContext";
 import { Products } from "./MenuContext";
+import { useDelivery } from "./DeliveryContext";
 
 export type OrderItemsType = {
     id: number;
@@ -17,6 +18,9 @@ export type OrderType = {
     status: string;   
     orderItems: OrderItemsType[];
     shop: Shop;
+    frete: number;
+    pickupCode: string;
+    deliveryCode: string;
 }
 
 type MyOrderType = {
@@ -30,6 +34,7 @@ const MyOrdersContext = createContext<MyOrderType>({} as MyOrderType);
 export const MyOrdersProvider = ({children} : {children: React.ReactNode}) => {
 
     const [order, setOrderState] = useState<OrderType[]>([])
+    const {includeDelivery, setDeliveries} = useDelivery()
 
     const loadOrders = async () => {
         try{
@@ -74,15 +79,35 @@ export const MyOrdersProvider = ({children} : {children: React.ReactNode}) => {
         loadOrders()
 
         socket.on('new-order-list', (orders) => {
+            console.log('criando novo pedido na lista de pedidos')
             const validOrders = Array.isArray(orders) ? orders : []
             setOrderState(validOrders)
+            
         })
 
         socket.on('order-updated', (order) => {
+            console.log('atualizando pedido na lista de pedidos: ', order.id)
             setOrderState(prev => {
                 return prev.map((item) => item.id === order.id ? {...item, ...order} : item)
             })
+
+            if(order.status === 'preparing'){
+            
+                console.log('incluindo uma nova entrega na lista de entregas');
+                includeDelivery(order)
+            }
+
+            if(order.status === 'shipped'){
+
+                console.log('colocando pedido como "Indo entregar"');
+                setDeliveries(order.id, {status: 'shipped'})
+            }
         })
+
+        return () => {
+            socket.off("new-order-list")
+            socket.off("order-updated")
+        }
     }, [])
 
     return(

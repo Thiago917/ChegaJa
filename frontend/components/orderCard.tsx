@@ -9,12 +9,13 @@ type OrderProps = {
   itens: any[]; // Ajuste conforme seu tipo
   horario: string;
   total: number;
+  pickupCode: string;
   status: string; // Adicionado status atual
 };
 
 const MAIN_COLOR = process.env.EXPO_PUBLIC_MAIN_COLOR
 
-export default function OrderCard({ id, cliente, itens, horario, total, status }: OrderProps) {
+export default function OrderCard({ id, cliente, itens, horario, total, status, pickupCode }: OrderProps) {
   
   const [loading, setLoading] = useState<boolean>(false)
   const { setOrders } = useOrders();
@@ -25,11 +26,17 @@ export default function OrderCard({ id, cliente, itens, horario, total, status }
     setLoading(true)
 
     if (status === 'paid') { nextStatus = 'preparing'; label = 'Preparar'; }
-    else if (status === 'preparing') { nextStatus = 'shipped'; label = 'Enviar para Entrega'; }
+    else if (status === 'preparing') { nextStatus = 'shipped'; label = 'Aguardando entregador'; }
+    else if (status === 'collecting') { nextStatus = 'shipped'; label = 'Em rota'; }
     else if (status === 'shipped') { nextStatus = 'delivered'; label = 'Finalizar'; }
 
     if (!nextStatus) return setLoading(false);
 
+    if(status === 'collecting') {
+      Alert.alert('Erro', 'Necessita do entregador validar o código da coleta')
+      setLoading(false)
+      return;
+    }
     try {
       await setOrders(id, { status: nextStatus });
       setLoading(false)
@@ -43,6 +50,7 @@ export default function OrderCard({ id, cliente, itens, horario, total, status }
     switch (status) {
       case 'paid': return { label: 'Pendente', color: '#f39c12', next: 'Preparar' };
       case 'preparing': return { label: 'Em preparo', color: '#3498db', next: 'Despachar' };
+      case 'collecting': return { label: 'Aguardando entregador', color: '#9f2954', next: 'Despachar' };
       case 'shipped': return { label: 'Em rota', color: '#9b59b6', next: 'Concluir' };
       case 'cancelled': return {label: 'Cancelado', color: '#ea1d2c', next: null}
       default: return { label: 'Entregue', color: '#2ecc71', next: null };
@@ -62,8 +70,10 @@ export default function OrderCard({ id, cliente, itens, horario, total, status }
         </View>
         <Text style={styles.time}>{horario}</Text>
       </View>
-
-      <Text style={styles.clientName}>{cliente}</Text>
+        {pickupCode && (
+          <Text style={styles.orderId}>Código de coleta: <Text style={{color: statusInfo.color, fontWeight: 'bold'}}>{pickupCode}</Text></Text>
+        )}
+      <Text style={[styles.clientName, {top: 5}]}>{cliente}</Text>
 
       {itens.map((item, index) => (
         <View key={index} style={styles.itemLine}>

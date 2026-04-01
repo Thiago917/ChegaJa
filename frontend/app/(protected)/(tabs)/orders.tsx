@@ -17,7 +17,7 @@ export default function Orders() {
     }, [loadOrders]);
 
     const activeOrders = useMemo(() => 
-        order?.filter(o => ['paid', 'preparing', 'shipped'].includes(o.status)) || [], 
+        order?.filter(o => ['paid', 'preparing', 'collecting', 'shipped'].includes(o.status)) || [], 
     [order]);
 
     const pastOrders = useMemo(() => 
@@ -28,6 +28,7 @@ export default function Orders() {
         switch (status) {
             case 'paid': return { label: 'Aguardando', color: '#f39c12', icon: 'time-outline' };
             case 'preparing': return { label: 'Preparando', color: '#3498db', icon: 'restaurant-outline' };
+            case 'collecting': return { label: 'A loja está aguardando o entregador', color: '#9f2954', icon: 'bicycle-outline' };
             case 'shipped': return { label: 'Em rota', color: '#9b59b6', icon: 'bicycle-outline' };
             case 'delivered': return { label: 'Entregue', color: '#2ecc71', icon: 'checkmark-circle-outline' };
             default: return { label: 'Cancelado', color: '#e74c3c', icon: 'close-circle-outline' };
@@ -75,8 +76,11 @@ export default function Orders() {
                                 </TouchableOpacity>
                             </View>
                             <View style={styles.statusRow}>
-                                <Text style={styles.statusText}>{status.label}</Text>
-                                <Ionicons name={status.icon as any} size={14} color="#2ecc71" />
+                                <Text style={[styles.statusText, { width: '45%' }]} numberOfLines={2}>{status.label}   <Ionicons name={status.icon as any} size={14} color={status.color} /></Text>
+                                
+                                {item.deliveryCode && (
+                                    <Text style={[styles.statusText, { width: '45%' }]} numberOfLines={2}>Código de entrega: <Text style={{color: status.color, fontWeight: 'bold'}}>{item.deliveryCode}</Text></Text>
+                                )}
                             </View>
                         </View>
                     </View>
@@ -215,8 +219,7 @@ const styles = StyleSheet.create({
         color: '#3e3e3e',
     },
     statusRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        flexDirection: 'column',
         marginTop: 2,
     },
     statusText: {

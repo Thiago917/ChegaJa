@@ -84,6 +84,24 @@ const productSchema = z.object({
     photo: z.string()
 })
 
+const addressSchema = z.object({
+    street: z.string().min(3),
+    number: z.string(),
+    complement: z.string().optional(),
+    neighborhood: z.string(),
+    city: z.string(),
+    uf: z.string().length(2),
+    cep: z.string().length(8),
+    label: z.string().optional(),
+    isDefault: z.boolean().default(false)
+});
+
+const updateShopSchema = z.object({
+    name: z.string().optional(),
+    isOpen: z.boolean().optional(),
+    category: z.string().optional(),
+});
+
 const email = nodemailer.createTransport({
     host: process.env.EMAIL_HOST, 
     port: Number(process.env.EMAIL_PORT), 
@@ -190,7 +208,7 @@ const resetEmailCode = new Map();
 
 const validaToken = async (token) => {
     try{
-        const decoded = fastify.jwt.verify(token, process.env.JWT_SECRECT);
+        const decoded = fastify.jwt.verify(token, process.env.JWT_SECRET);
         return {valid: true, userId: decoded.id};
     }
     catch(err){
@@ -201,23 +219,22 @@ const validaToken = async (token) => {
 
 //USER - START
 
-    fastify.get('/me', {onRequest:[fastify.authenticate]}, async(req, res) => {
-
-        const userId = req.user.id
+    fastify.get('/me', { onRequest: [fastify.authenticate] }, async (req, res) => {
+        const userId = req.user.id;
 
         const user = await prisma.user.findUnique({
-            where: {id: userId},
+            where: { id: userId },
         });
 
-        const address = await prisma.Address.findFirst({
-            where: {userId, isDefault: true}
-        })
+        if (!user) return res.status(404).send({ message: 'Usuário não encontrado!' });
 
-        const addresses = await prisma.Address.findMany({
-            where: {userId}
-        })
+        const address = await prisma.address.findFirst({
+            where: { userId, isDefault: true }
+        });
 
-        if(!user) return res.status(404).send({message: 'Usuário não encontrado!'});
+        const addresses = await prisma.address.findMany({
+            where: { userId }
+        });
 
         return {
             name: user.name,
@@ -348,23 +365,20 @@ const validaToken = async (token) => {
         return res.send({message: 'Cadastro realizado com sucesso!', accessToken: accessToken, refreshToken: refreshToken, error: false, name: newUser.name});
     })
 
-    fastify.post('/profile-photo', async(req, res) => {
-
-        const {user_id} = req.body
-        const {photo_url} = req.body
-
-        if(!user_id || !photo_url) return res.send({message: 'Foto não encontrada, ou ID do usuário = null', error: true})
+    fastify.post('/profile-photo', { onRequest: [fastify.authenticate] }, async (req, res) => {
+        const { photo_url } = req.body
+        const userId = req.user.id;
 
         if(photo_url === '') return res.send({message: 'Foto não encontrada', error: true});
 
         const user = await prisma.user.findUnique({
-            where: {id: user_id}
-        })
+            where: { id: userId }
+        });
 
         if(!user) return res.send({message: 'Usuário não encontrado!', error: true});
 
         const setPhoto = await prisma.user.update({
-            where: {id: user_id},
+            where: {id: userId},
             data: {photo: photo_url}
         })
 
@@ -381,7 +395,10 @@ const validaToken = async (token) => {
         
         const token = authHeader.split(' ')[1]
             
-        try{validaToken(token)}catch(err){res.send({message: err, error: true})}
+        const validation = await validaToken(token);
+        if (!validation.valid) {
+            return res.send({message: validation.message, error: true})
+        }
 
         const getTk = await prisma.RefreshToken.findFirst({
             where: {token}
@@ -412,7 +429,6 @@ const validaToken = async (token) => {
             {expiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRES_IN}
         )
 
-
         const newExpiresAt = new Date()
         newExpiresAt.setDate(newExpiresAt.getDate() + 7)
         
@@ -434,18 +450,26 @@ const validaToken = async (token) => {
 
     fastify.patch('/update-user/:id', {onRequest:[fastify.authenticate]}, async (req, res) => {
 
-        const user_id = req.user.id
-        const updates = req.body.updates
+        const userId = req.user.id
+        const updates = req.body.updates || {}
 
         const find = await prisma.user.findUnique({
             where: {id: user_id}
         })
         
         if(!find) return res.send({message: 'Usuário não encontrado', error: true})
+        // Mass Assignment protection: permitindo apenas campos específicos
+        const allowedUpdates = {};
+        if (updates.name) allowedUpdates.name = updates.name;
+        if (updates.email) allowedUpdates.email = updates.email;
+
+        if (Object.keys(allowedUpdates).length === 0) return res.send({message: 'Nenhuma alteração válida fornecida', error: true});
 
         const update_data = await prisma.user.update({
             where: {id: user_id},
-            data: updates
+            data: updates,
+            where: {id: userId},
+            data: allowedUpdates
         })
 
         if(!update_data) return res.send({message: 'Erro ao atualizar dados do usuário', error: true})
@@ -613,9 +637,14 @@ const validaToken = async (token) => {
     fastify.post('/register-address', {onRequest:[fastify.authenticate]}, async (req, res) => {
 
         const userId = req.user.id
-        const data = req.body
+        const resultValidation = addressSchema.safeParse(req.body);
 
         if(!userId || !data) return res.send({message: 'Dados não enviados para o backend', error: true})
+        if(!resultValidation.success) {
+            return res.send({message: 'Dados de endereço inválidos', details: resultValidation.error.format(), error: true})
+        }
+
+        const data = resultValidation.data;
 
         const exists = await prisma.Address.findFirst({
             where: {userId: userId, cep: data.cep}
@@ -626,6 +655,7 @@ const validaToken = async (token) => {
         const {geometry} = await getGeolocation(data.cep)
         
         const {latitude, longitude} = geometry.location
+        if (!latitude || !longitude) return res.send({message: 'Não foi possível obter geolocalização', error: true});
 
         const [_, __, result] = await prisma.$transaction([
             ...(data.isDefault ? [prisma.address.updateMany({
@@ -671,6 +701,16 @@ const validaToken = async (token) => {
         }
 
         try {
+            // Proteção IDOR: Verificar se o endereço pertence ao usuário
+            const existingAddress = await prisma.address.findUnique({
+                where: { id }
+            });
+
+            if (!existingAddress || existingAddress.userId !== userId) {
+                return res.status(403).send({ message: 'Acesso negado a este recurso', error: true });
+            }
+
+            // Filtragem de Mass Assignment para updates complexos
             let updatedAddress;
 
             if (Object.values(updates).length <= 1) {
@@ -692,9 +732,14 @@ const validaToken = async (token) => {
                 updatedAddress = result;
             } else {
                 
+                const allowedFields = ['logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'estado', 'cep', 'apelido'];
+                const filteredUpdates = Object.keys(updates)
+                    .filter(key => allowedFields.includes(key))
+                    .reduce((obj, key) => { obj[key] = updates[key]; return obj; }, {});
+
                 updatedAddress = await prisma.address.update({
-                    where: { id },
-                    data: updates 
+                    where: { id }, // id já validado como pertencente ao user acima
+                    data: filteredUpdates 
                 });
                 
                 io.emit('updated-address', updatedAddress);
@@ -796,11 +841,24 @@ const validaToken = async (token) => {
 
     fastify.patch('/update-shop/:id', {onRequest:[fastify.authenticate]}, async (req, res) => {
 
+        const userId = req.user.id
         const shop_id = Number(req.params.id)
-        const updates = req.body.updates
+        
+        const result = updateShopSchema.safeParse(req.body.updates);
+        if (!result.success) {
+            return res.send({error: true, message: 'Dados inválidos', details: result.error.format()})
+        }
+        
+        const updates = result.data;
 
-        if(!updates){
-            return res.send({error: true, message: 'Nenhum dado enviado'})
+        if(!updates) return res.send({error: true, message: 'Nenhum dado enviado'})
+        // Proteção IDOR: Verificar se o usuário é dono da loja
+        const shop = await prisma.shop.findUnique({
+            where: { id: shop_id }
+        });
+
+        if (!shop || shop.ownerId !== userId) {
+            return res.status(403).send({message: 'Você não tem permissão para editar esta loja', error: true});
         }
 
         const updatedShop = await prisma.shop.update({
@@ -871,28 +929,30 @@ const validaToken = async (token) => {
         if(!shop) return res.send({message: 'Não foi possível encontrar a loja', error: true})
         
         const products = await prisma.product.findMany({
-        where: {
-            shopId: ownerId
-        },
-        orderBy: {
-            category: 'asc'
-        }
+            where: {
+                shopId: ownerId,
+                shop: { ownerId: ownerId }
+            },
+            orderBy: {
+                category: 'asc'
+            }
         })
-        const groupedProducts = Object.values(
-        products.reduce((acc, product) => {
 
-            if (!acc[product.category]) {
-            acc[product.category] = {
-                category: product.category,
-                products: []
-            }
-            }
+        const groupedProducts = products.length > 0 && Object.values(
+            products.reduce((acc, product) => {
 
-            acc[product.category].products.push(product)
+                if (!acc[product.category]) {
+                acc[product.category] = {
+                    category: product.category,
+                    products: []
+                }
+                }
 
-            return acc
+                acc[product.category].products.push(product)
 
-        }, {})
+                return acc
+
+            }, {})
         )
 
         return res.send({response: groupedProducts});
@@ -900,23 +960,34 @@ const validaToken = async (token) => {
     })
 
     fastify.patch('/update-menu', {onRequest:[fastify.authenticate]}, async (req, res) => {
+        const userId = req.user.id;
+        const product_id = req.body.id;
+        const updates = req.body.data?.updates;
 
-        const shop_id = req.user.id
-        const product_id = req.body.id
-        const updates = req.body.data.updates
+        if(!updates || !product_id) return res.send({message: 'Dados incompletos', error: true})
 
-        if(!shop_id || !updates || !product_id) return res.send({message: 'Dados da loja não foram recebidos', error: true})
-        
-        const get_store = await prisma.Shop.findUnique({
-            where: {id: shop_id}
-        }) 
+        // Proteção IDOR: Verificar se o produto pertence a uma loja do usuário
+        const product = await prisma.Product.findUnique({
+            where: { id: product_id },
+            include: { shop: true }
+        });
 
-        if(!get_store) return res.send({message: 'A loja não foi encontrada', error: true})
+        if (!product || product.shop.ownerId !== userId) {
+            return res.status(403).send({message: 'Acesso negado a este produto', error: true});
+        }
+
+        // Mass Assignment: Filtrar updates
+        const cleanUpdates = {};
+        if (updates.name !== undefined) cleanUpdates.name = updates.name;
+        if (updates.price !== undefined) cleanUpdates.price = Number(updates.price);
+        if (updates.category !== undefined) cleanUpdates.category = updates.category;
+        if (updates.status !== undefined) cleanUpdates.status = updates.status;
+        if (updates.photo !== undefined) cleanUpdates.photo = updates.photo;
         
         const updt_data = await prisma.Product.update({
-            where: {id: product_id},
-            data: updates
-        }) 
+            where: { id: product_id },
+            data: cleanUpdates
+        });
 
         if(!updt_data) return res.send({message: 'Erro ao atualizar dados do menu', error: true})
 
@@ -925,14 +996,23 @@ const validaToken = async (token) => {
     })
 
     fastify.post('/register-product', {onRequest:[fastify.authenticate]}, async(req, res) => {
+        const userId = req.user.id;
+        const result = productSchema.safeParse(req.body.data);
+        
+        if (!result.success) {
+            return res.send({message: 'Dados do produto inválidos', error: true, details: result.error.format()});
+        }
 
-        const shop_id = req.user.id
-        const {name, price, category, photo} = req.body.data
+        const { name, price, category, photo } = result.data;
 
-        const get_store = await prisma.Shop.findUnique({
-            where: {id: shop_id}
-        }) 
-        if(!get_store) return res.send({message: 'Não foi possível encontrar a loja', error: false});
+        // Garantir que o produto seja criado na loja do usuário logado
+        const shop = await prisma.Shop.findUnique({
+            where: { ownerId: userId }
+        });
+
+        if (!shop) return res.send({message: 'Usuário não possui uma loja cadastrada', error: true});
+
+        const shop_id = shop.id;
 
         const find_prd = await prisma.Product.findUnique({
             where: {name},
@@ -973,7 +1053,7 @@ const validaToken = async (token) => {
         const {prod_id} = req.params
         const shopId = req.user.id
 
-        if(!prod_id || !prod_id) return res.send({message: 'Produto não recebido', error: true})
+        if(!prod_id) return res.send({message: 'Produto não recebido', error: true})
 
         const del_item = await prisma.Product.delete({
             where: {id: Number(prod_id)},
@@ -1023,6 +1103,21 @@ const validaToken = async (token) => {
         const userId = req.user.id;
         const { shopId, items, total } = req.body;
 
+        // Segurança: Nunca confiar no 'total' vindo do frontend.
+        // Recalcular no backend buscando preços reais do banco.
+        const productIds = items.map(i => i.id);
+        const dbProducts = await prisma.product.findMany({
+            where: { id: { in: productIds } }
+        });
+
+        let calculatedTotal = 0;
+        items.forEach(item => {
+            const p = dbProducts.find(dbP => dbP.id === item.id);
+            if (p) calculatedTotal += p.price * item.quantity;
+        });
+
+        // Adicionar frete (idealmente recalculado aqui também)
+
         try {
             const [_, result] = await prisma.$transaction([
                 prisma.order.create({
@@ -1030,15 +1125,25 @@ const validaToken = async (token) => {
                         userId,
                         shopId: parseInt(shopId),
                         items: JSON.stringify(items),
-                        total: parseFloat(total),
+                        total: calculatedTotal,
+                        orderItems: {
+                            create: items.map(i => ({
+                                productId: i.id,
+                                quantity: i.quantity,
+                                price: dbProducts.find(p => p.id === i.id).price
+                            }))
+                        }
                     }
                 }),
                 prisma.order.findMany({
-                    where: {
-                        userId
-                    },
+                    where: { userId },
                     include: {
-                        orderItems:true
+                        shop: true,
+                        orderItems: {
+                            include: {
+                                product: true
+                            }
+                        }
                     },
                     orderBy: {
                         createdAt: 'desc'
@@ -1048,6 +1153,7 @@ const validaToken = async (token) => {
         
             io.emit('new-order-list', result)
 
+            const order = result[0];
             return res.send({ message: 'Pedido criado com sucesso', orderId: order.id, error: false });
         } catch (error) {
             console.log('Erro ao criar pedido:', error);
@@ -1406,9 +1512,22 @@ const validaToken = async (token) => {
                     price: prod.price,
                 };
             });
-            const freteCentavos = Math.round(data[0].frete * 100)
-            totalCentavos += freteCentavos ;
 
+            // Proteção de Lógica: Recalcular o frete no backend em vez de aceitar do body
+            const userAddress = await prisma.Address.findFirst({ where: { userId, isDefault: true }});
+
+            const shopAddress = { lat: store.latitude, lng: store.longitude };
+            
+            let freteReal = 5.00; // Valor base fallback
+            if (userAddress) {
+                const distResult = await calculateDistance(userAddress.latitude, userAddress.longitude, shopAddress.lat, shopAddress.lng);
+                freteReal = Number(distResult.frete);
+            }
+
+            const freteCentavos = Math.round(freteReal * 100);
+            totalCentavos += freteCentavos;
+
+            // Reutilizar ordem pendente se existir (Prevenção de spam de pedidos)
             const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
 
             const exists = await prisma.Order.findFirst({

@@ -22,10 +22,8 @@ export default function RootLayout() {
 
   return (
     <>
-      <UserProvider>
-        <StatusBar barStyle="dark-content" backgroundColor="white" />
-        <Stack screenOptions={{ headerShown: false }} />
-      </UserProvider>
+      <StatusBar barStyle="dark-content" backgroundColor="white" />
+      <Stack screenOptions={{ headerShown: false }} />
     </>
   );
 }
