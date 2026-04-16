@@ -844,12 +844,7 @@ const validaToken = async (token) => {
         const userId = req.user.id
         const shop_id = Number(req.params.id)
         
-        const result = updateShopSchema.safeParse(req.body.updates);
-        if (!result.success) {
-            return res.send({error: true, message: 'Dados inválidos', details: result.error.format()})
-        }
-        
-        const updates = result.data;
+        const updates = req.body.updates;
 
         if(!updates) return res.send({error: true, message: 'Nenhum dado enviado'})
         // Proteção IDOR: Verificar se o usuário é dono da loja
@@ -866,9 +861,11 @@ const validaToken = async (token) => {
             data: updates
         })
 
+        console.log(updatedShop)
+
         io.emit('shop-status-change', {
             id: shop_id,
-            updates
+            updates: updates
         })
 
         return res.send({
@@ -910,7 +907,6 @@ const validaToken = async (token) => {
 
         return res.send({ response: groupedProducts, shop: shop });
     });
-
 
 //SHOP - END
 
